@@ -34,7 +34,7 @@ class NMS:
 
         return [nms_scores, nms_class, transformed_anchors[0, anchors_nms_idx, :]]
 
-
+    
     def entire_nms(self, scores, labels, boxes):
         selected_idx = self.calcurate(boxes, scores)[0]
         scores = scores[selected_idx]
@@ -43,7 +43,7 @@ class NMS:
 
         return scores, labels, boxes
 
-
+    
     def calcurate(self, boxes, scores, overlap=0.5, top_k=200):
         """Apply non-maximum suppression at test time to avoid detecting too many
         overlapping bounding boxes for a given object.

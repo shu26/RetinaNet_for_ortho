@@ -74,20 +74,14 @@ class NMS:
         w = boxes.new()
         h = boxes.new()
 
-        # keep = torch.Tensor()
-        # print('idx: ', idx.shape)
         count = 0
         while idx.numel() > 0:
             i = idx[-1]  # index of current largest val
-            # keep.append(i)
             keep[count] = i
             count += 1
             if idx.size(0) == 1:
                 break
             idx = idx[:-1]  # remove kept element from view
-            # print('x1: ', x1.shape)
-            # print('idx: ', idx.shape)
-            # print('xx1: ', xx1.shape)
             # load bboxes of next highest vals
             torch.index_select(x1, 0, idx, out=xx1)
             torch.index_select(y1, 0, idx, out=yy1)

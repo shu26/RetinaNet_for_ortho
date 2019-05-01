@@ -207,8 +207,8 @@ class CSVDataset(Dataset):
         p_idx, position, div_num = self.get_img_position(file_path)
         annot = self.load_annotations(idx)
         sample = {
-                'img': img, 
-                'annot': annot,
+                'img': img,
+                'annot': annot
                 }
         if self.transform:
             sample = self.transform(sample)
@@ -219,26 +219,13 @@ class CSVDataset(Dataset):
 
         return sample
 
-    def get_img_position(self, file_path):
-        # path example: './csv_data/0130/images/2_1x2_28x38.png'
-        filename = file_path.split('/')[-1].split('.')[0].split('_')
-        index = int(filename[0])
-        pos = [int(s) for s in filename[1].split('x')]
-        div_num = [int(s) for s in filename[2].split('x')]
-
-        return index, pos, div_num
-
     def load_image(self, image_index):
-        file_path = self.image_names[image_index]
-        img = skimage.io.imread(file_path)
+        img = skimage.io.imread(self.image_names[image_index])
 
         if len(img.shape) == 2:
             img = skimage.color.gray2rgb(img)
 
-            print("-----------------------")
-            print("img.shape: ")
-            print("::::::::::::::::::::::::")
-        return img.astype(np.float32)/255.0, file_path
+        return img.astype(np.float32)/255.0
 
     def load_annotations(self, image_index):
         # get ground truth annotations
@@ -326,9 +313,6 @@ def collater(data):
     imgs = [s['img'] for s in data]
     annots = [s['annot'] for s in data]
     scales = [s['scale'] for s in data]
-    p_idxs = [s['p_idx'] for s in data]
-    positions = [s['position'] for s in data]
-    div_nums = [s['div_num'] for s in data]
         
     widths = [int(s.shape[0]) for s in imgs]
     heights = [int(s.shape[1]) for s in imgs]
@@ -360,15 +344,14 @@ def collater(data):
 
     padded_imgs = padded_imgs.permute(0, 3, 1, 2)
 
-    return {'img': padded_imgs, 'annot': annot_padded, 'scale': scales, 
-            'p_idx': p_idxs, 'position': positions, 'div_num': div_nums}
+    return {'img': padded_imgs, 'annot': annot_padded, 'scale': scales}
 
 class Resizer(object):
     """Convert ndarrays in sample to Tensors."""
 
-    def __call__(self, sample, min_side=600, max_side=1024):   # 604, 1024
+    def __call__(self, sample, min_side=608, max_side=1024):
         image, annots = sample['img'], sample['annot']
-        
+
         rows, cols, cns = image.shape
 
         smallest_side = min(rows, cols)
@@ -381,14 +364,7 @@ class Resizer(object):
         largest_side = max(rows, cols)
 
         if largest_side * scale > max_side:
-            scale = max_side / largest_sid
-            
-            
-        # set scale=1 to match the size of output to input
-        scale = 1
-
-
-        
+            scale = max_side / largest_side
 
         # resize the image with the computed scale
         image = skimage.transform.resize(image, (int(round(rows*scale)), int(round((cols*scale)))))
@@ -438,7 +414,6 @@ class Normalizer(object):
     def __call__(self, sample):
 
         image, annots = sample['img'], sample['annot']
-
         return {'img':((image.astype(np.float32)-self.mean)/self.std), 'annot': annots}
 
 class UnNormalizer(object):
