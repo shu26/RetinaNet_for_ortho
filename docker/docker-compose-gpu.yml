@@ -8,4 +8,4 @@ services:
       context: .
       dockerfile: gpu.Dockerfile
       shm_size: '16gb'
-    image: tf_gpu_sample
+    image: retinanet_gpu
