@@ -381,7 +381,7 @@ class Resizer(object):
         largest_side = max(rows, cols)
 
         if largest_side * scale > max_side:
-            scale = max_side / largest_sid
+            scale = max_side / largest_side
             
             
         # set scale=1 to match the size of output to input
