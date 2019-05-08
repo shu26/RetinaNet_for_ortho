@@ -37,19 +37,19 @@ class Trainer:
         # Simple training script for training a RetinaNet network.
 
         # Dataset type, must be one of csv or coco.
-        self.dataset = 'coco'
+        self.dataset = 'csv'
 
         # Path to COCO directory
         self.coco_path = './data'
 
         # Path to file containing training annotations (see readme)
-        self.csv_train = None
+        self.csv_train ='./csv_data/anchi/annotations/annotation.csv'
 
         # Path to file containing class list (see readme)
-        self.csv_classes = None
+        self.csv_classes = './csv_data/anchi/annotations/class_id.csv'
 
         # Path to file containing validation annotations (optional, see readme)
-        self.csv_val = None
+        self.csv_val = './csv_data/anchi/annotations/annotation.csv'
 
         # Resnet depth, must be one of 18, 34, 50, 101, 152
         self.depth = 50
@@ -61,10 +61,13 @@ class Trainer:
         self.lr = 1e-5
 
         # Number of epochs
-        self.epochs = 3
+        ############################
+        # epoch40でlossは0.1を下回る
+        ############################
+        self.epochs = 50 
 
         # set device
-        self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        self.device = torch.device('cuda:1' if torch.cuda.is_available() else 'cpu')
 
         # set focal loss
         self.focal_loss = losses.FocalLoss()
@@ -170,6 +173,7 @@ class Trainer:
 
     
     def iterate(self):
+        print('GPU:{} is used'.format(self.device))
         dataset_train, dataset_val = self.set_dataset()
         sampler = AspectRatioBasedSampler(dataset_train, batch_size=self.bs, drop_last=False)
         dataloader_train = DataLoader(dataset_train, num_workers=0, collate_fn=collater, batch_sampler=sampler)
@@ -199,51 +203,52 @@ class Trainer:
             epoch_loss = self.train(epoch_num, epoch_loss, dataloader_train)
 
             self.retinanet.eval()
-
+            # 評価
             self.evaluate(epoch_num, dataset_val)
 
-            torch.save(self.retinanet.state_dict(), 
-                        os.path.join('./saved_models', 'model{}_final_{}.pth'.format(self.save_name, epoch_num)))
+            #モデルがたまりすぎるのでfor文後に一回だけ保存する
+            
             # torch.save(self.retinanet.module, '{}_self.retinanet_{}.pt'.format(self.dataset, epoch_num))
 
             # self.retinanet.load_state_dict(torch.load("./saved_models/model_final_0.pth"))
 
             self.scheduler.step(np.mean(epoch_loss))	
             self.retinanet.eval()
+        #torch.save(self.retinanet, 'model_final.pt'.format(epoch_num))
+        torch.save(self.retinanet.state_dict(), 'model_anchi_100.pth')
 
 
     def train(self, epoch_num, epoch_loss, dataloader_train):
         for iter_num, data in enumerate(dataloader_train):
             try:
-                self.optimizer.zero_grad()
 
+                self.optimizer.zero_grad()
                 input = data['img'].to(self.device).float()
                 annot = data['annot'].to(self.device)
-
                 regression, classification, anchors = self.retinanet(input)
-
+                #print('---------------------------')
+                #print('reg: ', regression.shape, regression[:, 0, :])
+                #print('cls: ', classification.shape, classification[:, 0, :])
+                #print('anc: ', anchors.shape, anchors[:, 0, :])
+                #print('---------------------------')
+                
+                """
+                ここでエラー
+                """
                 classification_loss, regression_loss = self.focal_loss.calcurate(classification, regression, anchors, annot)
                 
                 classification_loss = classification_loss.mean()
                 regression_loss = regression_loss.mean()
                 self.cls_loss_meter.update(classification_loss)
                 self.rgrs_loss_meter.update(regression_loss)
-
                 loss = classification_loss + regression_loss
-                
                 if bool(loss == 0):
                     continue
-
                 loss.backward()
-
                 torch.nn.utils.clip_grad_norm_(self.retinanet.parameters(), 0.1)
-
                 self.optimizer.step()
-
                 self.loss_hist.append(float(loss.item()))
-
                 epoch_loss.append(float(loss.item()))
-
                 torch.nn.utils.clip_grad_norm_(self.retinanet.parameters(), 0.1)
                 print('Epoch: {} | Iteration: {} | Classification loss: {:1.5f} | Regression loss: {:1.5f} | Running loss: {:1.5f}'.format(epoch_num, iter_num, float(classification_loss), float(regression_loss), np.mean(self.loss_hist)))
                 
@@ -260,17 +265,18 @@ class Trainer:
 
 
     def evaluate(self, epoch_num, dataset_val):
+        print('------------------------------------')
         if self.dataset == 'coco':
 
-            print('Evaluating dataset')
+            print('Evaluating dataset coco')
 
             coco_eval.evaluate_coco(dataset_val, self.retinanet, self.nms, self.device)
 
         elif self.dataset == 'csv' and self.csv_val is not None:
 
-            print('Evaluating dataset')
+            print('Evaluating dataset csv')
 
-            mAP = csv_eval.evaluate(dataset_val, self.retinanet)
+            mAP = csv_eval.evaluate(dataset_val, self.retinanet, self.nms, self.device)
 
 
 if __name__ == '__main__':
