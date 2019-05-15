@@ -64,7 +64,7 @@ class Trainer:
         ############################
         # epoch40でlossは0.1を下回る
         ############################
-        self.epochs = 50 
+        self.epochs = 1
 
         # set device
         self.device = torch.device('cuda:1' if torch.cuda.is_available() else 'cpu')
@@ -215,7 +215,7 @@ class Trainer:
             self.scheduler.step(np.mean(epoch_loss))	
             self.retinanet.eval()
         #torch.save(self.retinanet, 'model_final.pt'.format(epoch_num))
-        torch.save(self.retinanet.state_dict(), 'model_anchi_100.pth')
+        torch.save(self.retinanet.state_dict(), './saved_models/model_anchi_0508.pth')
 
 
     def train(self, epoch_num, epoch_loss, dataloader_train):

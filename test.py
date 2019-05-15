@@ -21,7 +21,7 @@ from modules.anchors import Anchors
 from modules.utils import BBoxTransform, ClipBoxes
 from modules.ortho_util import adjust_for_ortho_for_test, unite_images_for_test
 from modules import losses
-from modules import csv_eval
+from modules import csv_eval_for_test
 
 assert torch.__version__.split('.')[1] == '4'
 
@@ -44,7 +44,8 @@ def main(args=None):
             'coco_path': '',
             'csv_classes': './csv_data/anchi/annotations/class_id.csv',     # Use the class_id.csv for train, since the number of classes does not change
             'csv_val': './data_for_test/annotations/annotation.csv',    # Use annotation.csv for test
-            'model': './model_final_anchi.pth',
+            'csv_for_eval': './csv_data/anchi/annotations/annotation.csv',
+            'model': './saved_models/model_final_anchi.pth',
             'num_class': 3
             }
     device = torch.device('cuda:1' if torch.cuda.is_available() else 'cpu')
@@ -59,11 +60,15 @@ def main(args=None):
         dataset_val = CocoDataset(params['coco_path'], set_name='val2017', transform=transforms.Compose([Normalizer(), Resizer()]))
     elif params['dataset'] == 'csv':
         dataset_val = CSVDataset(train_file=params['csv_val'], class_list=params['csv_classes'], transform=transforms.Compose([Normalizer(), Resizer()]))
+        dataset_for_eval = CSVDataset(train_file=params['csv_for_eval'], class_list=params['csv_classes'], transform=transforms.Compose([Normalizer(), Resizer()]))
     else:
         raise ValueError('Dataset type not understood (must be csv or coco), exiting.')
 
     sampler_val = AspectRatioBasedSampler(dataset_val, batch_size=1, drop_last=False)
+    sampler_val_for_eval = AspectRatioBasedSampler(dataset_for_eval, batch_size=1, drop_last=False)
+
     dataloader_val = DataLoader(dataset_val, num_workers=1, collate_fn=collater, batch_sampler=sampler_val)
+    dataloader_val_for_eval = DataLoader(dataset_for_eval, num_workers=1, collate_fn=collater, batch_sampler=sampler_val_for_eval)
 
     nms = NMS(BBoxTransform, ClipBoxes)
 
@@ -142,8 +147,8 @@ def main(args=None):
         boxes_list = torch.cat(tuple(boxes_list), 0).cpu()
 
         # ----------------------------------------
-        # apply nms calcuraiton to entire bboxes
-        entire_scores, entire_labels, entire_boxes = nms.entire_nms(scores_list, labels_list, boxes_list)
+        # apply nms calcuraiton to entire bboxe
+        entire_scores, entire_labels, entire_boxes  = nms.entire_nms(scores_list, labels_list, boxes_list)
         # ----------------------------------------
 
         # ----------------------------------------
@@ -171,7 +176,7 @@ def main(args=None):
 
         # mapスコアで評価（全て0になってしまうのでまだうまく行ってない模様）
         print("Evaluating dataset csv")
-        mAP = csv_eval.evaluate(dataset_val, retinanet, nms, device)
+        mAP = csv_eval_for_test.evaluate(dataset_val, dataset_for_eval, dataloader_val_for_eval, ortho_img, entire_scores, entire_labels, entire_boxes, retinanet, nms, device)
         print("Now saving...")
         cv2.imwrite('temp.png', ortho_img)
         cv2.waitKey(0)
