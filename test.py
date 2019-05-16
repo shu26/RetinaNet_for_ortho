@@ -43,8 +43,8 @@ def main(args=None):
             'dataset': 'csv',
             'coco_path': '',
             'csv_classes': './csv_data/anchi/annotations/class_id.csv',     # Use the class_id.csv for train, since the number of classes does not change
-            'csv_val': './data_for_test/annotations/annotation.csv',    # Use annotation.csv for test
-            'csv_for_eval': './csv_data/anchi/annotations/annotation.csv',
+            'csv_val': './data_for_test/annotations/annotation.csv',    # Use annotation.csv which has only the image paths, not annotation data
+            'csv_for_eval': './csv_data/anchi/annotations/annotation.csv',  # 正解のアノテーション(1062枚分)
             'model': './saved_models/model_final_anchi.pth',
             'num_class': 3
             }
@@ -65,10 +65,7 @@ def main(args=None):
         raise ValueError('Dataset type not understood (must be csv or coco), exiting.')
 
     sampler_val = AspectRatioBasedSampler(dataset_val, batch_size=1, drop_last=False)
-    sampler_val_for_eval = AspectRatioBasedSampler(dataset_for_eval, batch_size=1, drop_last=False)
-
     dataloader_val = DataLoader(dataset_val, num_workers=1, collate_fn=collater, batch_sampler=sampler_val)
-    dataloader_val_for_eval = DataLoader(dataset_for_eval, num_workers=1, collate_fn=collater, batch_sampler=sampler_val_for_eval)
 
     nms = NMS(BBoxTransform, ClipBoxes)
 
@@ -98,10 +95,8 @@ def main(args=None):
     with torch.no_grad():
         for idx, data in enumerate(dataloader_val): # 画像の枚数分の処理
 
-            ######################################
-            # ここの時点ですでにサイズは640x640
-            # データを読み込む際にResizeしている可能性大
-            #####################################
+            # ここの時点で画像サイズは640x640
+            # データを読み込む際にResizeしているので変換
             input = data['img'].to(device).float()
             data['p_idx'] = data['p_idx'][0]    # ex) 1
             data['position'] = data['position'][0]  # ex) [12, 20]
@@ -174,9 +169,9 @@ def main(args=None):
             elif label_name == "plasticbottle":
                 cv2.rectangle(ortho_img, (x1, y1), (x2, y2), color=(0, 0, 255), thickness=2)    # red
 
-        # mapスコアで評価（全て0になってしまうのでまだうまく行ってない模様）
+        # evaluate
         print("Evaluating dataset csv")
-        mAP = csv_eval_for_test.evaluate(dataset_val, dataset_for_eval, dataloader_val_for_eval, ortho_img, entire_scores, entire_labels, entire_boxes, retinanet, nms, device)
+        mAP = csv_eval_for_test.evaluate(dataset_val, dataset_for_eval, ortho_img, entire_scores, entire_labels, entire_boxes, retinanet, nms, device)
         print("Now saving...")
         cv2.imwrite('temp.png', ortho_img)
         cv2.waitKey(0)

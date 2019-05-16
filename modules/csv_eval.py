@@ -139,9 +139,6 @@ def _get_annotations(generator):
     for i in range(len(generator)):
         # load the annotations
         annotations = generator.load_annotations(i)
-        print("////////////////////////")
-        print(annotations)
-        print("////////////////////////")
 
         # copy detections to all_annotations
         for label in range(generator.num_classes()):
@@ -180,19 +177,6 @@ def evaluate(
 
     all_detections     = _get_detections(generator, retinanet, nms, device, score_threshold=score_threshold, max_detections=max_detections, save_path=save_path)
     all_annotations    = _get_annotations(generator)
-
-
-    # all_detectionsとall_annotationsに関してテストように自分で作る
-    # 以下はそのまま使用する
-    print("all_detections")
-    print("---------------------------")
-    print(len(all_detections))
-    print(all_detections[:10])
-    print("---------------------------")
-    print(len(all_annotations))
-    print(all_annotations[:30])
-    print("---------------------------")
-
 
     average_precisions = {}
 

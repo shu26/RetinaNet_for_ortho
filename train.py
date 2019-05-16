@@ -62,7 +62,7 @@ class Trainer:
 
         # Number of epochs
         ############################
-        # epoch40でlossは0.1を下回る
+        # anchiではepoch40でlossは0.1を下回る
         ############################
         self.epochs = 1
 
@@ -168,9 +168,6 @@ class Trainer:
 
         self.loss_hist = collections.deque(maxlen=500)
 
-        # self.retinanet.train()
-        # self.retinanet.freeze_bn()
-
     
     def iterate(self):
         print('GPU:{} is used'.format(self.device))
@@ -178,9 +175,6 @@ class Trainer:
         sampler = AspectRatioBasedSampler(dataset_train, batch_size=self.bs, drop_last=False)
         dataloader_train = DataLoader(dataset_train, num_workers=0, collate_fn=collater, batch_sampler=sampler)
 
-        # if dataset_val is not None:
-        #     sampler_val = AspectRatioBasedSampler(dataset_val, batch_size=1, drop_last=False)
-        #     dataloader_val = DataLoader(dataset_val, num_workers=0, collate_fn=collater, batch_sampler=sampler_val)
         print('Num training images: {}'.format(len(dataset_train)))
 
         self.set_models(dataset_train)
@@ -207,14 +201,8 @@ class Trainer:
             self.evaluate(epoch_num, dataset_val)
 
             #モデルがたまりすぎるのでfor文後に一回だけ保存する
-            
-            # torch.save(self.retinanet.module, '{}_self.retinanet_{}.pt'.format(self.dataset, epoch_num))
-
-            # self.retinanet.load_state_dict(torch.load("./saved_models/model_final_0.pth"))
-
             self.scheduler.step(np.mean(epoch_loss))	
             self.retinanet.eval()
-        #torch.save(self.retinanet, 'model_final.pt'.format(epoch_num))
         torch.save(self.retinanet.state_dict(), './saved_models/model_anchi_0508.pth')
 
 
@@ -226,15 +214,7 @@ class Trainer:
                 input = data['img'].to(self.device).float()
                 annot = data['annot'].to(self.device)
                 regression, classification, anchors = self.retinanet(input)
-                #print('---------------------------')
-                #print('reg: ', regression.shape, regression[:, 0, :])
-                #print('cls: ', classification.shape, classification[:, 0, :])
-                #print('anc: ', anchors.shape, anchors[:, 0, :])
-                #print('---------------------------')
                 
-                """
-                ここでエラー
-                """
                 classification_loss, regression_loss = self.focal_loss.calcurate(classification, regression, anchors, annot)
                 
                 classification_loss = classification_loss.mean()

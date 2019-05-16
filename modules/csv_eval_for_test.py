@@ -5,7 +5,7 @@ import json
 import os
 
 import torch
-from modules.ortho_util import adjust_for_ortho_for_test
+from modules.ortho_util import adjust_for_ortho
 
 
 def compute_overlap(a, b):
@@ -86,18 +86,10 @@ def _get_detections(dataset, ortho_img,  entire_scores, entire_labels, entire_bo
 
             # run network
             inputs = ortho_img
-            #inputs = data['img'].permute(2, 0, 1).to(device).float().unsqueeze(dim=0)
-            #regression, classification, anchors = retinanet(inputs)
-            #scores, labels, boxes = nms.calc_from_retinanet_output(inputs, regression, classification, anchors)
+            
             scores = entire_scores
             labels = entire_labels
             boxes = entire_boxes
-            #scores, labels, boxes = retinanet(data['img'].permute(2, 0, 1).cuda().float().unsqueeze(dim=0))
-            #scores = scores.cpu().numpy()
-            #labels = labels.cpu().numpy()
-            #boxes  = boxes.cpu().numpy()
-
-            #boxes /= scale
 
             # select indices which have a score above the threshold
             indices = np.where(scores > score_threshold)[0]
@@ -127,7 +119,7 @@ def _get_detections(dataset, ortho_img,  entire_scores, entire_labels, entire_bo
     return all_detections
 
 
-def _get_annotations(generator, dataloader):
+def _get_annotations(generator):
     """ Get the ground truth annotations from the generator.
     The result is a list of lists such that the size is:
         all_detections[num_images][num_classes] = annotations[num_detections, 5]
@@ -136,48 +128,26 @@ def _get_annotations(generator, dataloader):
     # Returns
         A list of lists containing the annotations for each image in the generator.
     """
-    all_annotations = [[None for i in range(generator.num_classes())] for j in range(len(generator))]
-    #entire_annotation = []
-    index = []
-
-
-    for i in range(len(generator)):
-        # load the annotations
-        index.append(i)
-        annotations = generator.load_annotations(i)
-        # annotationは読み込めるが画像1062枚分処理しないといけない 
-        print("//////////////////////////////")
-        print(annotations)
-        print("//////////////////////////////")
-
-        for label in range(generator.num_classes()):
-            all_annotations[i][label] = annotations[annotations[:, 4] == label, :4].copy()
-
-        print('{}/{}'.format(i + 1, len(generator)), end='\r')
-
-    #for label in range(generator.num_classes()):
-        #all_annotations[0][label] = entire_annotation
-    
+    reshaped_annotations = [None for i in range(generator.num_classes())]
     all_bui = []
     all_tree = []
     all_pet = []
 
-    for data, items in zip(dataloader, all_annotations):
-        data['p_idx'] = data['p_idx'][0]    # ex) 1
-        data['position'] = data['position'][0]  # ex) [12, 20]
-        data['div_num'] = data['div_num'][0]    # ex) [28, 38]
+    for images in range(len(generator)): # run for each image 
+        _, image_path = generator.load_image(images)
+        index, position, div_num = generator.get_img_position(image_path)
+        annotations = generator.load_annotations(images)
 
-    #for items, row in zip(all_annotations, index): # 画像ごとの処理
-        for label_idx, item in enumerate(items):   # ラベルごとの処理
+        for label in range(generator.num_classes()): # reshape all_annotation
+            reshaped_annotations[label] = annotations[annotations[:, 4] == label, :4].copy()
+
+        for label_idx, item in enumerate(reshaped_annotations):   # run for each label
             if len(item) == 0:
-                print("skip")
                 pass
             else:
-                print("operate")
-                item = adjust_for_ortho_for_test(item, data['position'], data['div_num']).numpy()     # 全体の座標位置に戻す:これをやるために各画像のrow, colを取得して引数として渡す必要がある
-
-                for box in item:    # bboxごとの処理
-                    #all_box.append(box)
+                item = adjust_for_ortho(item, position, div_num).numpy() # adjust for the whole ortho-image
+                for box in item:    # run for each bbox
+                    # if you use more classes, it is neccesally to change below
                     if label_idx == 0:
                         all_bui.append(box)
                     elif label_idx == 1:
@@ -185,14 +155,6 @@ def _get_annotations(generator, dataloader):
                     elif label_idx == 2:
                         all_pet.append(box)
 
-    # 以下の値が実行するたびに毎回変わってしまう
-    print("=========================================================")
-    print(all_bui)
-    print("=========================================================")
-    print(all_tree)
-    print("=========================================================")
-    print(all_pet)
-    print("=========================================================")
     entire_bui = np.array(all_bui)
     entire_tree = np.array(all_tree)
     entire_pet = np.array(all_pet)
@@ -204,7 +166,6 @@ def _get_annotations(generator, dataloader):
 def evaluate(
     generator,
     generator_for_eval,
-    dataloader,
     ortho_img,
     entire_scores,
     entire_labels,
@@ -234,22 +195,7 @@ def evaluate(
     # gather all detections and annotations
 
     all_detections     = _get_detections(generator, ortho_img, entire_scores, entire_labels, entire_boxes, retinanet, nms, device, score_threshold=score_threshold, max_detections=max_detections, save_path=save_path)
-    all_annotations    = _get_annotations(generator_for_eval, dataloader)
-
-
-    # all_detectionsとall_annotationsに関してテストように自分で作る
-    # 以下はそのまま使用する
-    print("all_detections")
-    print("---------------------------")
-    print(type(all_detections))
-    print(len(all_detections))  # 1598
-    print(all_detections[:10])
-    print("---------------------------")
-    print(type(all_annotations))
-    print(len(all_annotations)) # 1062
-    print(all_annotations)
-    print("---------------------------")
-
+    all_annotations    = _get_annotations(generator_for_eval)
 
     average_precisions = {}
 
@@ -260,8 +206,8 @@ def evaluate(
         num_annotations = 0.0
 
         for i in range(1): 
-            detections           = all_detections[i][label] # 1598
-            annotations          = all_annotations[i][label]    # 1062
+            detections           = all_detections[i][label]
+            annotations          = all_annotations[i][label]
             num_annotations     += annotations.shape[0]
             detected_annotations = []
 
