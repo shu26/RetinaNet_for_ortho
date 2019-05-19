@@ -43,7 +43,7 @@ def main(args=None):
             'coco_path': '',
             'csv_classes': './csv_data/anchi/annotations/class_id.csv',
             'csv_val': './csv_data/anchi/annotations/annotation.csv',
-            'model': './model_final_anchi.pth',
+            'model': './saved_models/model_anchi_0518_100epochs.pth',
             'num_class': 3
             }
     device = torch.device('cuda:1' if torch.cuda.is_available() else 'cpu')
@@ -168,7 +168,7 @@ def main(args=None):
 
             cv2.rectangle(ortho_img, (x1, y1), (x2, y2), color=(0, 0, 255), thickness=2)
 
-        cv2.imwrite('temp.png', ortho_img)
+        cv2.imwrite('vis.png', ortho_img)
         cv2.waitKey(0)
 
 

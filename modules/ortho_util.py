@@ -64,7 +64,6 @@ def unite_images(images, idxs, positions, div_nums):
 
     sorted_images = images.copy()
     for i in idxs:
-        print(i)
         sorted_images[i] = images[idxs.index(i)]
 
     horizontal_concatenated_images = []

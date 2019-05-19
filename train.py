@@ -64,7 +64,7 @@ class Trainer:
         ############################
         # anchiではepoch40でlossは0.1を下回る
         ############################
-        self.epochs = 1
+        self.epochs = 100 
 
         # set device
         self.device = torch.device('cuda:1' if torch.cuda.is_available() else 'cpu')
@@ -79,7 +79,7 @@ class Trainer:
         self.save_name = 0
 
         # use comet_ml
-        self.cml = False
+        self.cml = True
 
         # classification_loss
         self.cls_loss_meter = AverageMeter()
@@ -100,14 +100,14 @@ class Trainer:
         }
 
         if self.cml:
-            self.experiment = Experiment(api_key="xK18bJy5xiPuPf9Dptr43ZuMk",
-                        project_name="retinanet-coco", workspace="tanimutomo")
+            self.experiment = Experiment(api_key="XgC28yk6LIhqha2yicN0vohwm",
+                        project_name="general", workspace="shu26")
         else:
             self.experiment = None
 
         if self.cml:
-            self.experiment.log_multiple_params(params)
-
+            print("send comet_ml")
+            self.experiment.log_parameters(params)
 
     def set_dataset(self):
         # Create the data loaders
@@ -189,7 +189,7 @@ class Trainer:
                     }
 
             if self.experiment is not None:
-                self.experiment.log_multiple_metrics(metrics, step=epoch_num)
+                self.experiment.log_metrics(metrics, step=epoch_num)
 
             self.retinanet.train()
             self.retinanet.freeze_bn()
@@ -203,7 +203,7 @@ class Trainer:
             #モデルがたまりすぎるのでfor文後に一回だけ保存する
             self.scheduler.step(np.mean(epoch_loss))	
             self.retinanet.eval()
-        torch.save(self.retinanet.state_dict(), './saved_models/model_anchi_0508.pth')
+        torch.save(self.retinanet.state_dict(), './saved_models/model_anchi_0519_100epochs_pet.pth')
 
 
     def train(self, epoch_num, epoch_loss, dataloader_train):
