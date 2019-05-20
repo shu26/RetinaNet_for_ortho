@@ -173,7 +173,7 @@ def evaluate(
     retinanet,
     nms,
     device,
-    iou_threshold=0.5,
+    iou_threshold=0.01,
     score_threshold=0.05,
     max_detections=100,
     save_path=None
@@ -198,6 +198,8 @@ def evaluate(
     all_annotations    = _get_annotations(generator_for_eval)
 
     average_precisions = {}
+    all_precisions = {}
+    all_recalls = {}
 
     for label in range(generator.num_classes()):
         false_positives = np.zeros((0,))
@@ -233,6 +235,8 @@ def evaluate(
 
         # no annotations -> AP for this class is 0 (is this correct?)
         if num_annotations == 0:
+            all_precisions[label] = 0
+            all_recalls[label] = 0
             average_precisions[label] = 0, 0
             continue
 
@@ -249,9 +253,24 @@ def evaluate(
         recall    = true_positives / num_annotations
         precision = true_positives / np.maximum(true_positives + false_positives, np.finfo(np.float64).eps)
 
+        all_recalls[label] = recall
+        all_precisions[label] = precision
+
         # compute average precision
         average_precision  = _compute_ap(recall, precision)
         average_precisions[label] = average_precision, num_annotations
+
+    print(all_recalls)
+
+    print('\nrecall:')
+    for label in range(generator.num_classes()):
+        label_name = generator.label_to_name(label)
+        print('{}: {}'.format(label_name, all_recalls[label]))
+    
+    print('\nprecision:')
+    for label in range(generator.num_classes()):
+        label_name = generator.label_to_name(label)
+        print('{}: {}'.format(label_name, all_precisions[label]))
     
     print('\nmAP:')
     for label in range(generator.num_classes()):
