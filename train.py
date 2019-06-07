@@ -1,5 +1,6 @@
 import os
 import sys
+import cv2
 import pdb
 import time
 import copy
@@ -24,6 +25,7 @@ from modules import coco_eval
 from modules import csv_eval
 from modules.nms_pytorch import NMS
 from modules.utils import BBoxTransform, ClipBoxes, AverageMeter
+from visualize import main as visualize
 
 import model
 
@@ -43,31 +45,31 @@ class Trainer:
         self.coco_path = './data'
 
         # Path to file containing training annotations (see readme)
-        self.csv_train ='./csv_data/anchi/annotations/annotation.csv'
+        self.csv_train ='./csv_data/temp0530/annotations/annotation.csv'
 
         # Path to file containing class list (see readme)
-        self.csv_classes = './csv_data/anchi/annotations/class_id.csv'
+        self.csv_classes = './csv_data/temp0530/annotations/class_id.csv'
 
         # Path to file containing validation annotations (optional, see readme)
-        self.csv_val = './csv_data/anchi/annotations/annotation.csv'
+        self.csv_val = './csv_data/temp0530/annotations/annotation.csv'
 
         # Resnet depth, must be one of 18, 34, 50, 101, 152
         self.depth = 50
 
         # batch_size
-        self.bs = 4
+        self.bs = 6
 
         # learning rate
-        self.lr = 1e-5
+        self.lr = 2e-5
 
         # Number of epochs
         ############################
         # anchiではepoch40でlossは0.1を下回る
         ############################
-        self.epochs = 100 
+        self.epochs = 300 
 
         # set device
-        self.device = torch.device('cuda:1' if torch.cuda.is_available() else 'cpu')
+        self.device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
         # set focal loss
         self.focal_loss = losses.FocalLoss()
@@ -89,6 +91,7 @@ class Trainer:
 
         self.set_comet_ml()
 
+        self.unnormalize = UnNormalizer()
     
     def set_comet_ml(self):
         params = {
@@ -198,12 +201,21 @@ class Trainer:
 
             self.retinanet.eval()
             # 評価
-            self.evaluate(epoch_num, dataset_val)
+            #self.evaluate(epoch_num, dataset_val)
 
-            #モデルがたまりすぎるのでfor文後に一回だけ保存する
+            # 50epochごとにモデルを保存する
             self.scheduler.step(np.mean(epoch_loss))	
             self.retinanet.eval()
-        torch.save(self.retinanet.state_dict(), './saved_models/model_anchi_0519_100epochs_pet.pth')
+            if (epoch_num+1) % 50 == 0 or epoch_num == 0:
+                self.evaluate(epoch_num, dataset_val)
+                model_path = os.path.join('./saved_models/temp0530/', 'model_{}epochs.pth'.format(epoch_num))
+                torch.save(self.retinanet.state_dict(), model_path)
+                
+                visualize(model_path, epoch_num)
+                #self.experiment.log_image(image_data=vis_img)
+
+
+        #torch.save(self.retinanet.state_dict(), './saved_models/model_anchi_0522_1000epochs_pet.pth')
 
 
     def train(self, epoch_num, epoch_loss, dataloader_train):
@@ -213,6 +225,24 @@ class Trainer:
                 self.optimizer.zero_grad()
                 input = data['img'].to(self.device).float()
                 annot = data['annot'].to(self.device)
+
+                # 非正規化
+                img = np.array(255 * self.unnormalize(data['img'][0, :, :, :])).copy()
+                img = img[:,:600,:600]
+                img[img<0] = 0
+                img[img>255] = 255
+                img = np.transpose(img, (1, 2, 0))
+                img = cv2.cvtColor(img.astype(np.uint8), cv2.COLOR_BGR2RGB)
+
+                img1d = np.sum(img, axis=-1) # rbgを合成->全ての値が0なら黒くなる
+                imgblack = np.where(img1d==0, 1, 0)
+                black_count = np.sum(imgblack)  # 黒い画像の数を計算
+                ratio = black_count / (img1d.shape[0] * img1d.shape[1])
+
+                # 画像の8割がくらい時はその画像はretinanetの処理はしない
+                if ratio >= 0.8:
+                    continue
+
                 regression, classification, anchors = self.retinanet(input)
                 
                 classification_loss, regression_loss = self.focal_loss.calcurate(classification, regression, anchors, annot)
@@ -255,9 +285,17 @@ class Trainer:
         elif self.dataset == 'csv' and self.csv_val is not None:
 
             print('Evaluating dataset csv')
+            
+            # precision とrecallは平均値
+            recall, precision, mAP = csv_eval.evaluate(dataset_val, self.retinanet, self.nms, self.device)
 
-            mAP = csv_eval.evaluate(dataset_val, self.retinanet, self.nms, self.device)
+            metrics = {
+                    'precision': precision[1],
+                    'recall': recall[1],
+                    'mAP': mAP[1][0]
+                    }
 
+            self.experiment.log_metrics(metrics, step=epoch_num)
 
 if __name__ == '__main__':
     trainer = Trainer()

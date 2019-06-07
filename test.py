@@ -44,11 +44,11 @@ def main(args=None):
             'coco_path': '',
             'csv_classes': './csv_data/anchi/annotations/class_id.csv',     # Use the class_id.csv for train, since the number of classes does not change
             'csv_val': './data_for_test/annotations/annotation.csv',    # Use annotation.csv which has only the image paths, not annotation data
-            'csv_for_eval': './csv_data/anchi/annotations/annotation.csv',  # 正解のアノテーション(1062枚分)
-            'model': './saved_models/model_anchi_0519_200epochs.pth',
+            'csv_for_eval': './csv_data/anchi/annotations/annotation.csv',  # 正解のアノテーション(1064枚分)
+            'model': './saved_models/anchi_pet/model_999epochs.pth',
             'num_class': 3
             }
-    device = torch.device('cuda:1' if torch.cuda.is_available() else 'cpu')
+    device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
     print(":::::::::::::::::")
     print(device)

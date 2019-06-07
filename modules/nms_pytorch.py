@@ -9,11 +9,12 @@ class NMS:
         self.clipBoxes = ClipBoxes()
 
     def calc_from_retinanet_output(self, inputs, regression, classification, anchors):
+        
         transformed_anchors = self.regressBoxes(anchors, regression)
         transformed_anchors = self.clipBoxes(transformed_anchors, inputs)
         scores = torch.max(classification, dim=2, keepdim=True)[0]
 
-        scores_over_thresh = (scores>0.05)[0, :, 0]
+        scores_over_thresh = (scores>0.01)[0, :, 0]
         # scores_over_thresh = scores
 
         if scores_over_thresh.sum() == 0:
