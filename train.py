@@ -105,12 +105,10 @@ class Trainer:
         if self.cml:
             self.experiment = Experiment(api_key="XgC28yk6LIhqha2yicN0vohwm",
                         project_name="general", workspace="shu26")
-        else:
-            self.experiment = None
-
-        if self.cml:
             print("send comet_ml")
             self.experiment.log_parameters(params)
+        else:
+            self.experiment = None
 
     def set_dataset(self):
         # Create the data loaders
