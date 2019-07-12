@@ -45,13 +45,13 @@ class Trainer:
         self.coco_path = './data'
 
         # Path to file containing training annotations (see readme)
-        self.csv_train ='./csv_data/temp0530/annotations/annotation.csv'
+        self.csv_train ='./csv_data/temp0705/jpg_5m/annotations/annotation.csv'
 
         # Path to file containing class list (see readme)
-        self.csv_classes = './csv_data/temp0530/annotations/class_id.csv'
+        self.csv_classes = './csv_data/temp0705/jpg_5m//annotations/class_id.csv'
 
         # Path to file containing validation annotations (optional, see readme)
-        self.csv_val = './csv_data/temp0530/annotations/annotation.csv'
+        self.csv_val = './csv_data/temp0705/jpg_5m/annotations/annotation.csv'
 
         # Resnet depth, must be one of 18, 34, 50, 101, 152
         self.depth = 50
@@ -63,10 +63,7 @@ class Trainer:
         self.lr = 2e-5
 
         # Number of epochs
-        ############################
-        # anchiではepoch40でlossは0.1を下回る
-        ############################
-        self.epochs = 300 
+        self.epochs = 500
 
         # set device
         self.device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
@@ -113,24 +110,17 @@ class Trainer:
     def set_dataset(self):
         # Create the data loaders
         if self.dataset == 'coco':
-
             if self.coco_path is None:
                 raise ValueError('Must provide --coco_path when training on COCO,')
-
             dataset_train = CocoDataset(self.coco_path, set_name='train2017', transform=transforms.Compose([Normalizer(), Augmenter(), Resizer()]))
             dataset_val = CocoDataset(self.coco_path, set_name='val2017', transform=transforms.Compose([Normalizer(), Resizer()]))
 
         elif self.dataset == 'csv':
-
             if self.csv_train is None:
                 raise ValueError('Must provide --csv_train when training on COCO,')
-
             if self.csv_classes is None:
                 raise ValueError('Must provide --csv_classes when training on COCO,')
-
-
             dataset_train = CSVDataset(train_file=self.csv_train, class_list=self.csv_classes, transform=transforms.Compose([Normalizer(), Augmenter(), Resizer()]))
-
             if self.csv_val is None:
                 dataset_val = None
                 print('No validation annotations provided.')
@@ -159,14 +149,10 @@ class Trainer:
             raise ValueError('Unsupported model depth, must be one of 18, 34, 50, 101, 152')		
 
         self.retinanet = retinanet.to(self.device)
-
         self.retinanet.training = True
-
         self.optimizer = optim.Adam(self.retinanet.parameters(), lr=self.lr)
-
         # This lr_shceduler reduce the learning rate based on the models's validation loss
         self.scheduler = optim.lr_scheduler.ReduceLROnPlateau(self.optimizer, patience=3, verbose=True)
-
         self.loss_hist = collections.deque(maxlen=500)
 
     
@@ -191,12 +177,9 @@ class Trainer:
 
             if self.experiment is not None:
                 self.experiment.log_metrics(metrics, step=epoch_num)
-
             self.retinanet.train()
             self.retinanet.freeze_bn()
-
             epoch_loss = self.train(epoch_num, epoch_loss, dataloader_train)
-
             self.retinanet.eval()
             # 評価
             #self.evaluate(epoch_num, dataset_val)
@@ -204,9 +187,9 @@ class Trainer:
             # 50epochごとにモデルを保存する
             self.scheduler.step(np.mean(epoch_loss))	
             self.retinanet.eval()
-            if (epoch_num+1) % 50 == 0 or epoch_num == 0:
+            if (epoch_num+1) % 50 == 0: # epoch_num == 0:
                 self.evaluate(epoch_num, dataset_val)
-                model_path = os.path.join('./saved_models/temp0530/', 'model_{}epochs.pth'.format(epoch_num))
+                model_path = os.path.join('./saved_models/temp0705/jpg_5m/', 'model_{}epochs.pth'.format(epoch_num))
                 torch.save(self.retinanet.state_dict(), model_path)
                 
                 visualize(model_path, epoch_num)

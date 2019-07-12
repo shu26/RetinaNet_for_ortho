@@ -29,16 +29,6 @@ print('CUDA available: {}'.format(torch.cuda.is_available()))
 
 
 def main(args=None):
-    # parser = argparse.ArgumentParser(description='Simple training script for training a RetinaNet network.')
-
-    # parser.add_argument('--dataset', help='Dataset type, must be one of csv or coco.', default='coco')
-    # parser.add_argument('--coco_path', help='Path to COCO directory', default='./data')
-    # parser.add_argument('--csv_classes', help='Path to file containing class list (see readme)')
-    # parser.add_argument('--csv_val', help='Path to file containing validation annotations (optional, see readme)')
-
-    # parser.add_argument('--model', help='Path to model (.pt) file.', default='./coco_resnet_50_map_0_335.pt')
-
-    # parser = parser.parse_args(args)
     params = {
             'dataset': 'csv',
             'coco_path': '',
@@ -102,7 +92,7 @@ def main(args=None):
             data['position'] = data['position'][0]  # ex) [12, 20]
             data['div_num'] = data['div_num'][0]    # ex) [28, 38]
 
-            # 非正規化
+            # unnormalization
             img = np.array(255 * unnormalize(data['img'][0, :, :, :])).copy()
             img = img[:,:600,:600]
             img[img<0] = 0

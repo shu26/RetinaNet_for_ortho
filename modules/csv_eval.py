@@ -155,7 +155,7 @@ def evaluate(
     nms,
     device,
     iou_threshold=0.5,
-    score_threshold=0.05,
+    score_threshold=0.5,
     max_detections=100,
     save_path=None
 ):
@@ -171,7 +171,9 @@ def evaluate(
         A dict mapping class names to mAP scores.
     """
 
-
+    print()
+    print(len(generator))
+    print()
 
     # gather all detections and annotations
 
@@ -222,17 +224,42 @@ def evaluate(
             continue
 
         # sort by score
+        print("===================")
+        print(scores)
+        print()
+        print(-scores)
+        print("===================")
+        
         indices         = np.argsort(-scores)
+        print("===================")
+        print(indices)
+        print("===================")
         false_positives = false_positives[indices]
         true_positives  = true_positives[indices]
+
+        print(":::::::::::::::::::::::::::::::::")
+        print(false_positives)
+        print(true_positives)
+        print(":::::::::::::::::::::::::::::::::")
 
         # compute false positives and true positives
         false_positives = np.cumsum(false_positives)
         true_positives  = np.cumsum(true_positives)
 
+        print("::::::::::::::::::::")
+        print(false_positives)
+        print(true_positives)
+        print("::::::::::::::::::::")
+
         # compute recall and precision
         recall    = true_positives / num_annotations
         precision = true_positives / np.maximum(true_positives + false_positives, np.finfo(np.float64).eps)
+
+        print("::::::::")
+        print(recall)
+        print(precision)
+        print("::::::::")
+
 
         all_recalls[label] = recall
         all_precisions[label] = precision
@@ -252,6 +279,9 @@ def evaluate(
         elif all_recalls[label].all() == 0:
             continue
         label_name = generator.label_to_name(label)
+        print("================")
+        print(all_recalls[label])
+        print("================")
         mean_recall = (sum(all_recalls[label]) + 1e-8) / (len(all_recalls[label]) + 1e-8)
         mean_recalls[label] = mean_recall
         print('{}: {}'.format(label_name, mean_recall))
@@ -263,6 +293,9 @@ def evaluate(
         elif all_precisions[label].all() == 0:
             continue
         label_name = generator.label_to_name(label)
+        print("================")
+        print(all_precisions[label])
+        print("================")
         mean_precision = (sum(all_precisions[label]) + 1e-8) / (len(all_precisions[label]) + 1e-8)
         mean_precisions[label] = mean_precision
         print('{}: {}'.format(label_name, mean_precision))

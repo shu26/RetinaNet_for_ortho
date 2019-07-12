@@ -13,14 +13,12 @@ def adjust_for_ortho(boxes, position, div_num):
         # start position from 0 not 1
         adj_x = (position[1] - 1) * 600
         adj_y = (position[0] - 1) * 600
-
         out_box = torch.tensor([
             tl_x + adj_x,
             tl_y + adj_y,
             br_x + adj_x,
             br_y + adj_y
             ]).unsqueeze(0)
-
         if idx == 0:
             out_boxes = out_box
         else:
@@ -87,7 +85,7 @@ def unite_images(images, idxs, positions, div_nums):
     default=0
     div_num_y_val = div_num_y #38
 
-    for i in range(div_num_x-1):  #28
+    for i in range(div_num_x):  #28
         print("i:default:div::::", i,default,div_num_y_val)
         temp_image = np.hstack(sorted_images[default:div_num_y_val]) #38こずつ横に連結
         horizontal_concatenated_images.append(temp_image)

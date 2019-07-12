@@ -34,8 +34,8 @@ def main(model_path, epoch_num):
     params = {
             'dataset': 'csv',
             'coco_path': '',
-            'csv_classes': './csv_data/temp0530/annotations/class_id.csv',
-            'csv_val': './csv_data/temp0530/annotations/annotation.csv',
+            'csv_classes': './csv_data/temp0705/jpg_5m/annotations/class_id.csv',
+            'csv_val': './csv_data/temp0705/jpg_5m/annotations/annotation.csv',
             #'model': './saved_models/model_anchi_0520_100epochs_pet.pth',
             'model': model_path,
             'num_class': 3
@@ -58,15 +58,11 @@ def main(model_path, epoch_num):
 
     sampler_val = AspectRatioBasedSampler(dataset_val, batch_size=1, drop_last=False)
     dataloader_val = DataLoader(dataset_val, num_workers=1, collate_fn=collater, batch_sampler=sampler_val)
-
     nms = NMS(BBoxTransform, ClipBoxes)
-
     retinanet = resnet50(num_classes=params['num_class'], pretrained=True)
     retinanet.load_state_dict(torch.load(params['model']), strict=False)
     retinanet.eval()
-
     retinanet = retinanet.to(device)
-
     unnormalize = UnNormalizer()
 
     def draw_caption(image, box, caption):
@@ -83,30 +79,15 @@ def main(model_path, epoch_num):
     div_nums = []
 
     # when you predict result using retinanet, this is True 
-    isPrediction = False
+    isPrediction = True
 
     with torch.no_grad():
         for idx, data in enumerate(dataloader_val):
 
-            # ここのどこかで画像に対して黒を判別してreturnする処理をかける
-            # RGBを抽出
-            # img1d = np.sum(img,axis=-1)
-            # 黒を抽出
-            # imgblack = np.where(img1d=0,1,0)
-            # 黒の部分を計算
-            # sum = np.sum(img1d=1の部分)
-            # 画像に対する黒の割合を計算
-            # ratio = sum / (h * w) 
-
-            #st = time.time()
-            # scores, classification, transformed_anchors = retinanet(data['img'].to(device).float())
-            
             input = data['img'].to(device).float()
-            
             regression, classification, anchors = retinanet(input)
             scores, labels, boxes = nms.calc_from_retinanet_output(
                 input, regression, classification, anchors)
-
             data['p_idx'] = data['p_idx'][0]
             data['position'] = data['position'][0]
             data['div_num'] = data['div_num'][0]
@@ -163,14 +144,13 @@ def main(model_path, epoch_num):
         
             with open(params['csv_val'], 'r') as f:
                 reader = csv.reader(f)
-                header = next(reader)
                 idx = 0
                 for row in reader:
                     print(row)
                     # boxがあるとき
                     if row[1] != '': 
                         path = row[0]
-                        img_name = path.split("/")[4]
+                        img_name = path.split("/")[5] #change idx 4 to 5 for test path
                         #img_idx = img_name.split("_")[0]
                         img_pos = img_name.split("_")[1]
                         img_div = img_name.split("_")[2].split(".")[0]
@@ -225,7 +205,7 @@ def main(model_path, epoch_num):
             cv2.rectangle(ortho_img, (x1, y1), (x2, y2), color=(0, 0, 255), thickness=2)
 
         print("Now saving...")
-        cv2.imwrite('./visualized_images/vis_0607_{}epochs.png'.format(epoch_num), ortho_img)
+        cv2.imwrite('./visualized_images/temp0705/jpg_5m/vis_{}epochs.png'.format(epoch_num), ortho_img)
         print("Finish saving")
         #cv2.waitKey(0)
 
