@@ -63,7 +63,10 @@ class Trainer:
         self.lr = 2e-5
 
         # Number of epochs
-        self.epochs = 500
+        self.epochs = 10000
+
+        # Number of save epochs
+        #self.save_freq = 5
 
         # set device
         self.device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
@@ -187,8 +190,11 @@ class Trainer:
             # 50epochごとにモデルを保存する
             self.scheduler.step(np.mean(epoch_loss))	
             self.retinanet.eval()
-            if (epoch_num+1) % 50 == 0: # epoch_num == 0:
+            if (epoch_num+1) % 5 == 0:
                 self.evaluate(epoch_num, dataset_val)
+
+            if (epoch_num+1) % 1000 == 0: # epoch_num == 0:
+                #self.evaluate(epoch_num, dataset_val)
                 model_path = os.path.join('./saved_models/temp0705/jpg_5m/', 'model_{}epochs.pth'.format(epoch_num))
                 torch.save(self.retinanet.state_dict(), model_path)
                 

@@ -49,10 +49,20 @@ def _compute_ap(recall, precision):
     mrec = np.concatenate(([0.], recall, [1.]))
     mpre = np.concatenate(([0.], precision, [0.]))
 
+    print("-- compute_ap --")
+    print()
+    print("mrec")
+    print(mrec)
+    print()
+    print("mpre")
+    print(mpre)
+    print()
+
     # compute the precision envelope
     for i in range(mpre.size - 1, 0, -1):
         mpre[i - 1] = np.maximum(mpre[i - 1], mpre[i])
 
+    
     # to calculate area under PR curve, look for points
     # where X axis (recall) changes value
     i = np.where(mrec[1:] != mrec[:-1])[0]
@@ -94,11 +104,28 @@ def _get_detections(dataset, retinanet, nms, device, score_threshold=0.05, max_d
             labels = labels.cpu().numpy()
             boxes  = boxes.cpu().numpy()
 
+
+            #print(" - - - - - - - ")
+            #print("boxes")
+            #print(boxes)
+            #print(" - - - - - - - ")
+
             # correct boxes for image scale
             boxes /= scale
 
             # select indices which have a score above the threshold
             indices = np.where(scores > score_threshold)[0]
+            
+            
+            #print(" - - - - - - - ")
+            #print("scores")
+            #print(scores)
+            #print()
+            #print("indices")
+            #print(indices)
+            #print(" - - - - - - - ")
+
+
             if indices.shape[0] > 0:
                 # select those scores
                 scores = scores[indices]
@@ -171,14 +198,19 @@ def evaluate(
         A dict mapping class names to mAP scores.
     """
 
-    print()
-    print(len(generator))
-    print()
+    #print()
+    #print(len(generator))
+    #print()
 
     # gather all detections and annotations
 
     all_detections     = _get_detections(generator, retinanet, nms, device, score_threshold=score_threshold, max_detections=max_detections, save_path=save_path)
     all_annotations    = _get_annotations(generator)
+
+    #print()
+    #print("all_detections")
+    #print(all_detections)
+    #print()
 
     average_precisions = {}
     all_precisions = {}
@@ -249,24 +281,40 @@ def evaluate(
         print("::::::::::::::::::::")
         print(false_positives)
         print(true_positives)
+        print()
+        print(num_annotations)
         print("::::::::::::::::::::")
+
+        # recallの計算過程が怪しい
 
         # compute recall and precision
         recall    = true_positives / num_annotations
-        precision = true_positives / np.maximum(true_positives + false_positives, np.finfo(np.float64).eps)
+        precision = true_positives / (true_positives + false_positives)
+        #precision = true_positives / np.maximum(true_positives + false_positives, np.finfo(np.float64).eps)
 
         print("::::::::")
         print(recall)
         print(precision)
         print("::::::::")
 
-
-        all_recalls[label] = recall
-        all_precisions[label] = precision
+        if len(recall) == 0:
+            all_recalls[label] = [0.]
+            all_precisions[label] = [0.]
+            print("aaaaaaaa")
+            print(all_recalls[label])
+            print(all_precisions[label])
+        else:
+            all_recalls[label] = recall
+            all_precisions[label] = precision
 
         # compute average precision
         average_precision  = _compute_ap(recall, precision)
         average_precisions[label] = average_precision, num_annotations
+        print("::::::::::::::::::::::::::::::::::::::::::::::::::")
+        print(average_precision)
+        print()
+        print(average_precisions)
+        print("::::::::::::::::::::::::::::::::::::::::::::::::::")
 
     # precisionとrecallは平均だけ出すようにする
     mean_precision = [sum(average_precisions[0]) / len(average_precisions[0])] 
@@ -275,35 +323,40 @@ def evaluate(
     print('\nrecall:')
     for label in range(generator.num_classes()):
         if isinstance(all_recalls[label], int):
+            #all_recalls[label] = 0
             continue
-        elif all_recalls[label].all() == 0:
-            continue
+        #elif all_recalls[label].all() == 0:
+            #continue
         label_name = generator.label_to_name(label)
         print("================")
         print(all_recalls[label])
         print("================")
         mean_recall = (sum(all_recalls[label]) + 1e-8) / (len(all_recalls[label]) + 1e-8)
         mean_recalls[label] = mean_recall
-        print('{}: {}'.format(label_name, mean_recall))
+        print('{}: {}'.format(label_name, all_recalls[label][-1]))
     
     print('\nprecision:')
     for label in range(generator.num_classes()):
         if isinstance(all_precisions[label],int):
+            #all_precisions[label] = 0
             continue
-        elif all_precisions[label].all() == 0:
-            continue
+        #elif all_precisions[label].all() == 0:
+            #continue
         label_name = generator.label_to_name(label)
         print("================")
         print(all_precisions[label])
         print("================")
         mean_precision = (sum(all_precisions[label]) + 1e-8) / (len(all_precisions[label]) + 1e-8)
         mean_precisions[label] = mean_precision
-        print('{}: {}'.format(label_name, mean_precision))
+        print('{}: {}'.format(label_name, all_precisions[label][-1]))
 
     print('\nmAP:')
     for label in range(generator.num_classes()):
         label_name = generator.label_to_name(label)
         print('{}: {}'.format(label_name, average_precisions[label][0]))
-    
+
+    ## debug
+    mean_recalls[1] = all_recalls[1][-1]
+    mean_precisions[1] = all_precisions[1][-1]
     return mean_recalls, mean_precisions, average_precisions
 
