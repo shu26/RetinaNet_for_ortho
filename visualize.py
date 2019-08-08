@@ -23,8 +23,6 @@ from modules.utils import BBoxTransform, ClipBoxes
 from modules.ortho_util import adjust_for_ortho, adjust_for_ortho_for_vis, unite_images
 from modules import losses
 
-assert torch.__version__.split('.')[1] == '4'
-
 print('CUDA available: {}'.format(torch.cuda.is_available()))
 
 

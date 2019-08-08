@@ -29,7 +29,7 @@ from visualize import main as visualize
 
 import model
 
-assert torch.__version__.split('.')[1] == '4'
+#assert torch.__version__.split('.')[1] == '4'
 
 print('CUDA available: {}'.format(torch.cuda.is_available()))
 
@@ -63,7 +63,7 @@ class Trainer:
         self.lr = 2e-5
 
         # Number of epochs
-        self.epochs = 500
+        self.epochs = 300
 
         # Number of save epochs
         #self.save_freq = 5
@@ -273,12 +273,11 @@ class Trainer:
 
             print('Evaluating dataset csv')
             
-            # precision とrecallは平均値
             recall, precision, mAP = csv_eval.evaluate(dataset_val, self.retinanet, self.nms, self.device)
 
             metrics = {
-                    'precision': precision[1],
-                    'recall': recall[1],
+                    'precision': precision,
+                    'recall': recall,
                     'mAP': mAP[1][0]
                     }
 

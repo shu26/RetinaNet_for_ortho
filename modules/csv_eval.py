@@ -356,7 +356,7 @@ def evaluate(
         print('{}: {}'.format(label_name, average_precisions[label][0]))
 
     ## debug
-    mean_recalls[1] = all_recalls[1][-1]
-    mean_precisions[1] = all_precisions[1][-1]
-    return mean_recalls, mean_precisions, average_precisions
+    #mean_recalls[1] = all_recalls[1][-1]
+    #mean_precisions[1] = all_precisions[1][-1]
+    return all_recalls[1][-1], all_precisions[1][-1], average_precisions
 
