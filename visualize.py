@@ -34,8 +34,8 @@ def main(model_path, epoch_num):
     params = {
             'dataset': 'csv',
             'coco_path': '',
-            'csv_classes': './csv_data/temp0705/jpg_5m/annotations/class_id.csv',
-            'csv_val': './csv_data/temp0705/jpg_5m/annotations/annotation.csv',
+            'csv_classes': './csv_data/temp0730/tif_5m/annotations/class_id.csv',
+            'csv_val': './csv_data/temp0730/tif_5m/annotations/annotation.csv',
             #'model': './saved_models/model_anchi_0520_100epochs_pet.pth',
             'model': model_path,
             'num_class': 3
@@ -150,7 +150,7 @@ def main(model_path, epoch_num):
                     # boxがあるとき
                     if row[1] != '': 
                         path = row[0]
-                        img_name = path.split("/")[5] #change idx 4 to 5 for test path
+                        img_name = path.split("/")[5] #change idx 4 to 5 if you use small dataset
                         #img_idx = img_name.split("_")[0]
                         img_pos = img_name.split("_")[1]
                         img_div = img_name.split("_")[2].split(".")[0]
@@ -205,7 +205,7 @@ def main(model_path, epoch_num):
             cv2.rectangle(ortho_img, (x1, y1), (x2, y2), color=(0, 0, 255), thickness=2)
 
         print("Now saving...")
-        cv2.imwrite('./visualized_images/temp0705/jpg_5m/vis_{}epochs.png'.format(epoch_num), ortho_img)
+        cv2.imwrite('./visualized_images/temp0730/tif_5m/vis_{}epochs.png'.format(epoch_num), ortho_img)
         print("Finish saving")
         #cv2.waitKey(0)
 
