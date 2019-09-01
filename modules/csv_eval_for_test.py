@@ -5,7 +5,7 @@ import json
 import os
 
 import torch
-
+from modules.ortho_util import adjust_for_ortho
 
 
 def compute_overlap(a, b):
@@ -49,20 +49,10 @@ def _compute_ap(recall, precision):
     mrec = np.concatenate(([0.], recall, [1.]))
     mpre = np.concatenate(([0.], precision, [0.]))
 
-    print("-- compute_ap --")
-    print()
-    print("mrec")
-    print(mrec)
-    print()
-    print("mpre")
-    print(mpre)
-    print()
-
     # compute the precision envelope
     for i in range(mpre.size - 1, 0, -1):
         mpre[i - 1] = np.maximum(mpre[i - 1], mpre[i])
 
-    
     # to calculate area under PR curve, look for points
     # where X axis (recall) changes value
     i = np.where(mrec[1:] != mrec[:-1])[0]
@@ -72,7 +62,7 @@ def _compute_ap(recall, precision):
     return ap
 
 
-def _get_detections(dataset, retinanet, nms, device, score_threshold=0.05, max_detections=100, save_path=None):
+def _get_detections(dataset, ortho_img,  entire_scores, entire_labels, entire_boxes, retinanet, nms, device, score_threshold=0.05, max_detections=100, save_path=None):
     """ Get the detections from the retinanet using the generator.
     The result is a list of lists such that the size is:
         all_detections[num_images][num_classes] = detections[num_detections, 4 + num_classes]
@@ -85,47 +75,24 @@ def _get_detections(dataset, retinanet, nms, device, score_threshold=0.05, max_d
     # Returns
         A list of lists containing the detections for each image in the generator.
     """
-    all_detections = [[None for i in range(dataset.num_classes())] for j in range(len(dataset))]
+    all_detections = [[None for i in range(dataset.num_classes())] for j in range(1)]
 
     retinanet.eval()
     
     with torch.no_grad():
 
-        for index in range(len(dataset)):
+        for index in range(1):
             data = dataset[index]
-            scale = data['scale']
 
             # run network
-            inputs = data['img'].permute(2, 0, 1).to(device).float().unsqueeze(dim=0)
-            regression, classification, anchors = retinanet(inputs)
-            scores, labels, boxes = nms.calc_from_retinanet_output(inputs, regression, classification, anchors)
-            #scores, labels, boxes = retinanet(data['img'].permute(2, 0, 1).cuda().float().unsqueeze(dim=0))
-            scores = scores.cpu().numpy()
-            labels = labels.cpu().numpy()
-            boxes  = boxes.cpu().numpy()
-
-
-            #print(" - - - - - - - ")
-            #print("boxes")
-            #print(boxes)
-            #print(" - - - - - - - ")
-
-            # correct boxes for image scale
-            boxes /= scale
+            inputs = ortho_img
+            
+            scores = entire_scores
+            labels = entire_labels
+            boxes = entire_boxes
 
             # select indices which have a score above the threshold
             indices = np.where(scores > score_threshold)[0]
-            
-            
-            #print(" - - - - - - - ")
-            #print("scores")
-            #print(scores)
-            #print()
-            #print("indices")
-            #print(indices)
-            #print(" - - - - - - - ")
-
-
             if indices.shape[0] > 0:
                 # select those scores
                 scores = scores[indices]
@@ -147,7 +114,7 @@ def _get_detections(dataset, retinanet, nms, device, score_threshold=0.05, max_d
                 for label in range(dataset.num_classes()):
                     all_detections[index][label] = np.zeros((0, 5))
 
-            print('{}/{}'.format(index + 1, len(dataset)), end='\r')
+            print('{}/{}'.format(index + 1, 1, end='\r'))
 
     return all_detections
 
@@ -161,28 +128,53 @@ def _get_annotations(generator):
     # Returns
         A list of lists containing the annotations for each image in the generator.
     """
-    all_annotations = [[None for i in range(generator.num_classes())] for j in range(len(generator))]
+    reshaped_annotations = [None for i in range(generator.num_classes())]
+    all_bui = []
+    all_tree = []
+    all_pet = []
 
-    for i in range(len(generator)):
-        # load the annotations
-        annotations = generator.load_annotations(i)
+    for images in range(len(generator)): # run for each image 
+        _, image_path = generator.load_image(images)
+        index, position, div_num = generator.get_img_position(image_path)
+        annotations = generator.load_annotations(images)
 
-        # copy detections to all_annotations
-        for label in range(generator.num_classes()):
-            all_annotations[i][label] = annotations[annotations[:, 4] == label, :4].copy()
+        for label in range(generator.num_classes()): # reshape all_annotation
+            reshaped_annotations[label] = annotations[annotations[:, 4] == label, :4].copy()
 
-        print('{}/{}'.format(i + 1, len(generator)), end='\r')
+        for label_idx, item in enumerate(reshaped_annotations):   # run for each label
+            if len(item) == 0:
+                pass
+            else:
+                item = adjust_for_ortho(item, position, div_num).numpy() # adjust for the whole ortho-image
+                for box in item:    # run for each bbox
+                    # if you use more classes, it is neccesally to change below
+                    if label_idx == 0:
+                        all_bui.append(box)
+                    elif label_idx == 1:
+                        all_tree.append(box)
+                    elif label_idx == 2:
+                        all_pet.append(box)
 
-    return all_annotations
+    entire_bui = np.array(all_bui)
+    entire_tree = np.array(all_tree)
+    entire_pet = np.array(all_pet)
+    entire_annotations = [[entire_bui, entire_tree, entire_pet]]
+
+    return entire_annotations
 
 
 def evaluate(
     generator,
+    generator_for_eval,
+    ortho_img,
+    entire_scores,
+    entire_labels,
+    entire_boxes,
     retinanet,
     nms,
     device,
-    iou_threshold=0.5,
-    score_threshold=0.5,
+    iou_threshold=0.01,
+    score_threshold=0.05,
     max_detections=100,
     save_path=None
 ):
@@ -198,19 +190,12 @@ def evaluate(
         A dict mapping class names to mAP scores.
     """
 
-    #print()
-    #print(len(generator))
-    #print()
+
 
     # gather all detections and annotations
 
-    all_detections     = _get_detections(generator, retinanet, nms, device, score_threshold=score_threshold, max_detections=max_detections, save_path=save_path)
-    all_annotations    = _get_annotations(generator)
-
-    #print()
-    #print("all_detections")
-    #print(all_detections)
-    #print()
+    all_detections     = _get_detections(generator, ortho_img, entire_scores, entire_labels, entire_boxes, retinanet, nms, device, score_threshold=score_threshold, max_detections=max_detections, save_path=save_path)
+    all_annotations    = _get_annotations(generator_for_eval)
 
     average_precisions = {}
     all_precisions = {}
@@ -222,7 +207,7 @@ def evaluate(
         scores          = np.zeros((0,))
         num_annotations = 0.0
 
-        for i in range(len(generator)):
+        for i in range(1): 
             detections           = all_detections[i][label]
             annotations          = all_annotations[i][label]
             num_annotations     += annotations.shape[0]
@@ -256,107 +241,41 @@ def evaluate(
             continue
 
         # sort by score
-        print("===================")
-        print(scores)
-        print()
-        print(-scores)
-        print("===================")
-        
         indices         = np.argsort(-scores)
-        print("===================")
-        print(indices)
-        print("===================")
         false_positives = false_positives[indices]
         true_positives  = true_positives[indices]
-
-        print(":::::::::::::::::::::::::::::::::")
-        print(false_positives)
-        print(true_positives)
-        print(":::::::::::::::::::::::::::::::::")
 
         # compute false positives and true positives
         false_positives = np.cumsum(false_positives)
         true_positives  = np.cumsum(true_positives)
 
-        print("::::::::::::::::::::")
-        print(false_positives)
-        print(true_positives)
-        print()
-        print(num_annotations)
-        print("::::::::::::::::::::")
-
-        # recallの計算過程が怪しい
-
         # compute recall and precision
         recall    = true_positives / num_annotations
-        precision = true_positives / (true_positives + false_positives)
-        #precision = true_positives / np.maximum(true_positives + false_positives, np.finfo(np.float64).eps)
+        precision = true_positives / np.maximum(true_positives + false_positives, np.finfo(np.float64).eps)
 
-        print("::::::::")
-        print(recall)
-        print(precision)
-        print("::::::::")
-
-        if len(recall) == 0:
-            all_recalls[label] = [0.]
-            all_precisions[label] = [0.]
-            print("aaaaaaaa")
-            print(all_recalls[label])
-            print(all_precisions[label])
-        else:
-            all_recalls[label] = recall
-            all_precisions[label] = precision
+        all_recalls[label] = recall
+        all_precisions[label] = precision
 
         # compute average precision
         average_precision  = _compute_ap(recall, precision)
         average_precisions[label] = average_precision, num_annotations
-        print("::::::::::::::::::::::::::::::::::::::::::::::::::")
-        print(average_precision)
-        print()
-        print(average_precisions)
-        print("::::::::::::::::::::::::::::::::::::::::::::::::::")
 
-    # precisionとrecallは平均だけ出すようにする
-    mean_precision = [sum(average_precisions[0]) / len(average_precisions[0])] 
-    mean_recalls = [0,0,0]
-    mean_precisions = [0,0,0]
+    print(all_recalls)
+
     print('\nrecall:')
     for label in range(generator.num_classes()):
-        if isinstance(all_recalls[label], int):
-            #all_recalls[label] = 0
-            continue
-        #elif all_recalls[label].all() == 0:
-            #continue
         label_name = generator.label_to_name(label)
-        print("================")
-        print(all_recalls[label])
-        print("================")
-        mean_recall = (sum(all_recalls[label]) + 1e-8) / (len(all_recalls[label]) + 1e-8)
-        mean_recalls[label] = mean_recall
-        print('{}: {}'.format(label_name, all_recalls[label][-1]))
+        print('{}: {}'.format(label_name, all_recalls[label]))
     
     print('\nprecision:')
     for label in range(generator.num_classes()):
-        if isinstance(all_precisions[label],int):
-            #all_precisions[label] = 0
-            continue
-        #elif all_precisions[label].all() == 0:
-            #continue
         label_name = generator.label_to_name(label)
-        print("================")
-        print(all_precisions[label])
-        print("================")
-        mean_precision = (sum(all_precisions[label]) + 1e-8) / (len(all_precisions[label]) + 1e-8)
-        mean_precisions[label] = mean_precision
-        print('{}: {}'.format(label_name, all_precisions[label][-1]))
-
+        print('{}: {}'.format(label_name, all_precisions[label]))
+    
     print('\nmAP:')
     for label in range(generator.num_classes()):
         label_name = generator.label_to_name(label)
         print('{}: {}'.format(label_name, average_precisions[label][0]))
-
-    ## debug
-    #mean_recalls[1] = all_recalls[1][-1]
-    #mean_precisions[1] = all_precisions[1][-1]
-    return all_recalls[1][-1], all_precisions[1][-1], average_precisions
+    
+    return average_precisions
 

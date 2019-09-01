@@ -21,7 +21,7 @@ from modules.anchors import Anchors
 from modules.utils import BBoxTransform, ClipBoxes
 from modules.ortho_util import adjust_for_ortho_for_test, unite_images_for_test
 from modules import losses
-from modules import csv_eval
+from modules import csv_eval_for_test
 
 assert torch.__version__.split('.')[1] == '4'
 
@@ -29,25 +29,16 @@ print('CUDA available: {}'.format(torch.cuda.is_available()))
 
 
 def main(args=None):
-    # parser = argparse.ArgumentParser(description='Simple training script for training a RetinaNet network.')
-
-    # parser.add_argument('--dataset', help='Dataset type, must be one of csv or coco.', default='coco')
-    # parser.add_argument('--coco_path', help='Path to COCO directory', default='./data')
-    # parser.add_argument('--csv_classes', help='Path to file containing class list (see readme)')
-    # parser.add_argument('--csv_val', help='Path to file containing validation annotations (optional, see readme)')
-
-    # parser.add_argument('--model', help='Path to model (.pt) file.', default='./coco_resnet_50_map_0_335.pt')
-
-    # parser = parser.parse_args(args)
     params = {
             'dataset': 'csv',
             'coco_path': '',
             'csv_classes': './csv_data/anchi/annotations/class_id.csv',     # Use the class_id.csv for train, since the number of classes does not change
-            'csv_val': './data_for_test/annotations/annotation.csv',    # Use annotation.csv for test
-            'model': './model_final_anchi.pth',
+            'csv_val': './data_for_test/annotations/annotation.csv',    # Use annotation.csv which has only the image paths, not annotation data
+            'csv_for_eval': './csv_data/anchi/annotations/annotation.csv',  # 正解のアノテーション(1064枚分)
+            'model': './saved_models/anchi_pet/model_999epochs.pth',
             'num_class': 3
             }
-    device = torch.device('cuda:1' if torch.cuda.is_available() else 'cpu')
+    device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
     print(":::::::::::::::::")
     print(device)
@@ -59,6 +50,7 @@ def main(args=None):
         dataset_val = CocoDataset(params['coco_path'], set_name='val2017', transform=transforms.Compose([Normalizer(), Resizer()]))
     elif params['dataset'] == 'csv':
         dataset_val = CSVDataset(train_file=params['csv_val'], class_list=params['csv_classes'], transform=transforms.Compose([Normalizer(), Resizer()]))
+        dataset_for_eval = CSVDataset(train_file=params['csv_for_eval'], class_list=params['csv_classes'], transform=transforms.Compose([Normalizer(), Resizer()]))
     else:
         raise ValueError('Dataset type not understood (must be csv or coco), exiting.')
 
@@ -93,16 +85,14 @@ def main(args=None):
     with torch.no_grad():
         for idx, data in enumerate(dataloader_val): # 画像の枚数分の処理
 
-            ######################################
-            # ここの時点ですでにサイズは640x640
-            # データを読み込む際にResizeしている可能性大
-            #####################################
+            # ここの時点で画像サイズは640x640
+            # データを読み込む際にResizeしているので変換
             input = data['img'].to(device).float()
             data['p_idx'] = data['p_idx'][0]    # ex) 1
             data['position'] = data['position'][0]  # ex) [12, 20]
             data['div_num'] = data['div_num'][0]    # ex) [28, 38]
 
-            # 非正規化
+            # unnormalization
             img = np.array(255 * unnormalize(data['img'][0, :, :, :])).copy()
             img = img[:,:600,:600]
             img[img<0] = 0
@@ -142,8 +132,8 @@ def main(args=None):
         boxes_list = torch.cat(tuple(boxes_list), 0).cpu()
 
         # ----------------------------------------
-        # apply nms calcuraiton to entire bboxes
-        entire_scores, entire_labels, entire_boxes = nms.entire_nms(scores_list, labels_list, boxes_list)
+        # apply nms calcuraiton to entire bboxe
+        entire_scores, entire_labels, entire_boxes  = nms.entire_nms(scores_list, labels_list, boxes_list)
         # ----------------------------------------
 
         # ----------------------------------------
@@ -169,9 +159,9 @@ def main(args=None):
             elif label_name == "plasticbottle":
                 cv2.rectangle(ortho_img, (x1, y1), (x2, y2), color=(0, 0, 255), thickness=2)    # red
 
-        # mapスコアで評価（全て0になってしまうのでまだうまく行ってない模様）
+        # evaluate
         print("Evaluating dataset csv")
-        mAP = csv_eval.evaluate(dataset_val, retinanet, nms, device)
+        mAP = csv_eval_for_test.evaluate(dataset_val, dataset_for_eval, ortho_img, entire_scores, entire_labels, entire_boxes, retinanet, nms, device)
         print("Now saving...")
         cv2.imwrite('temp.png', ortho_img)
         cv2.waitKey(0)
