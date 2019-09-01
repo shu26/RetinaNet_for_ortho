@@ -10,7 +10,8 @@ def main():
     v_count = 0
     h_count = 0
 
-    img_default = tifffile.imread("ortho_image/ortho_anchi.tif")
+    img_default = tifffile.imread("../../Desktop/Orthor_experiment/0730_ortho/20m.tif")
+    #img = cv2.imread("./temp_jpg_5m.jpg") # use .jpg image
     img = cv2.cvtColor(img_default, cv2.COLOR_BGR2RGB)
     v_size = img.shape[0]
     h_size = img.shape[1]
@@ -69,7 +70,7 @@ def main():
     # 出力する
     for i in out_imgs:
         out_place = out_places[count]
-        file_name = "./anchi/images/{0}_{1}_{2}.png".format(count,out_place,split_count)
+        file_name = "./temp0730/images/tif_20m/{0}_{1}_{2}.png".format(count,out_place,split_count)
         cv2.imwrite(file_name, i)
         count+=1
 
