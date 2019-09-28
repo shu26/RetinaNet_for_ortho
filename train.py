@@ -69,7 +69,7 @@ class Trainer:
         #self.save_freq = 5
 
         # set device
-        self.device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+        self.device = torch.device('cuda:1' if torch.cuda.is_available() else 'cpu')
 
         # set focal loss
         self.focal_loss = losses.FocalLoss()
