@@ -1,0 +1,23 @@
+[[source]]
+name = "pypi"
+url = "https://pypi.org/simple"
+verify_ssl = true
+
+[dev-packages]
+
+[packages]
+opencv-python = "*"
+cffi = "*"
+pandas = "*"
+requests = "*"
+matplotlib = "*"
+scikit-image = "*"
+Cython = "*"
+pycocotools = "*"
+numpy = "==1.15.0"
+torchvision = "==0.3.0"
+torch = "==1.1.0"
+comet-ml = "==2.0.5"
+
+[requires]
+python_version = "3.5"
