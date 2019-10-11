@@ -45,13 +45,13 @@ class Trainer:
         self.coco_path = './data'
 
         # Path to file containing training annotations (see readme)
-        self.csv_train ='./csv_data/temp0924/jpeg/25m/annotations/annotation.csv'
+        self.csv_train ='./csv_data/temp1004_Pix4d/30m/annotations/annotation.csv'
 
         # Path to file containing class list (see readme)
-        self.csv_classes = './csv_data/temp0924/jpeg/25m/annotations/class_id.csv'
+        self.csv_classes = './csv_data/temp1004_Pix4d/30m/annotations/class_id.csv'
 
         # Path to file containing validation annotations (optional, see readme)
-        self.csv_val = './csv_data/temp0924/jpeg/25m/annotations/annotation.csv'
+        self.csv_val = './csv_data/temp1004_Pix4d/30m/annotations/annotation.csv'
 
         # Resnet depth, must be one of 18, 34, 50, 101, 152
         self.depth = 50
@@ -60,10 +60,10 @@ class Trainer:
         self.bs = 6
 
         # learning rate
-        self.lr = 2e-5
+        self.lr = 6e-5
 
         # Number of epochs
-        self.epochs = 300
+        self.epochs = 1000
 
         # Number of save epochs
         #self.save_freq = 5
@@ -193,9 +193,9 @@ class Trainer:
             if (epoch_num+1) % 5 == 0:
                 self.evaluate(epoch_num, dataset_val)
 
-            if (epoch_num+1) % 100 == 0: # epoch_num == 0:
+            if (epoch_num+1) % 200 == 0:# or epoch_num == 10:
                 #self.evaluate(epoch_num, dataset_val)
-                model_path = os.path.join('./saved_models/temp0924/jpeg/25m/', 'model_{}epochs.pth'.format(epoch_num))
+                model_path = os.path.join('./saved_models/temp1004_Pix4d/30m/', 'model_{}epochs.pth'.format(epoch_num))
                 torch.save(self.retinanet.state_dict(), model_path)
                 
                 visualize(model_path, epoch_num)
