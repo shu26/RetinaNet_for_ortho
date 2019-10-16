@@ -104,28 +104,12 @@ def _get_detections(dataset, retinanet, nms, device, score_threshold=0.05, max_d
             labels = labels.cpu().numpy()
             boxes  = boxes.cpu().numpy()
 
-
-            #print(" - - - - - - - ")
-            #print("boxes")
-            #print(boxes)
-            #print(" - - - - - - - ")
-
             # correct boxes for image scale
             boxes /= scale
 
             # select indices which have a score above the threshold
             indices = np.where(scores > score_threshold)[0]
             
-            
-            #print(" - - - - - - - ")
-            #print("scores")
-            #print(scores)
-            #print()
-            #print("indices")
-            #print(indices)
-            #print(" - - - - - - - ")
-
-
             if indices.shape[0] > 0:
                 # select those scores
                 scores = scores[indices]
@@ -198,19 +182,10 @@ def evaluate(
         A dict mapping class names to mAP scores.
     """
 
-    #print()
-    #print(len(generator))
-    #print()
-
     # gather all detections and annotations
 
     all_detections     = _get_detections(generator, retinanet, nms, device, score_threshold=score_threshold, max_detections=max_detections, save_path=save_path)
     all_annotations    = _get_annotations(generator)
-
-    #print()
-    #print("all_detections")
-    #print(all_detections)
-    #print()
 
     average_precisions = {}
     all_precisions = {}
@@ -285,8 +260,6 @@ def evaluate(
         print(num_annotations)
         print("::::::::::::::::::::")
 
-        # recallの計算過程が怪しい
-
         # compute recall and precision
         recall    = true_positives / num_annotations
         precision = true_positives / (true_positives + false_positives)
@@ -355,8 +328,5 @@ def evaluate(
         label_name = generator.label_to_name(label)
         print('{}: {}'.format(label_name, average_precisions[label][0]))
 
-    ## debug
-    #mean_recalls[1] = all_recalls[1][-1]
-    #mean_precisions[1] = all_precisions[1][-1]
     return all_recalls[1][-1], all_precisions[1][-1], average_precisions
 

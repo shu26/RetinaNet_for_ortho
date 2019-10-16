@@ -1,10 +1,7 @@
 import os
 import sys
 import cv2
-import pdb
-import time
 import copy
-import argparse
 import collections
 import numpy as np
 from comet_ml import Experiment
@@ -187,7 +184,7 @@ class Trainer:
             # 評価
             #self.evaluate(epoch_num, dataset_val)
 
-            # 50epochごとにモデルを保存する
+            # モデルを保存する
             self.scheduler.step(np.mean(epoch_loss))	
             self.retinanet.eval()
             if (epoch_num+1) % 5 == 0:
