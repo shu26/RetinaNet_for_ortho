@@ -16,7 +16,7 @@ from model import resnet50
 from modules.nms_pytorch import NMS
 from modules.anchors import Anchors
 from modules.utils import BBoxTransform, ClipBoxes
-from modules.ortho_util import adjust_for_ortho, adjust_for_ortho_for_vis, unite_images
+from modules.ortho_util import adjust_for_ortho, adjust_for_ortho_for_vis, adjust_for_ortho_for_test, unite_images, unite_images_for_test
 from modules import losses
 
 print('CUDA available: {}'.format(torch.cuda.is_available()))
@@ -30,9 +30,10 @@ def main(model_path, epoch_num):
             'coco_path': '',
             'csv_classes': './csv_data/temp1004_Pix4d/30m/annotations/class_id.csv',
             'csv_val': './csv_data/temp1004_Pix4d/30m/annotations/annotation.csv',
-            #'model': './saved_models/model_anchi_0520_100epochs_pet.pth',
             'model': model_path,
-            'num_class': 3
+            'num_class': 3,
+            'prediction': True,
+            'test': False,
             }
     device = torch.device('cuda:1' if torch.cuda.is_available() else 'cpu')
 
@@ -72,9 +73,6 @@ def main(model_path, epoch_num):
     positions = []
     div_nums = []
 
-    # when you predict result using retinanet, this is True 
-    isPrediction = True
-
     with torch.no_grad():
         for idx, data in enumerate(dataloader_val):
 
@@ -87,8 +85,12 @@ def main(model_path, epoch_num):
             data['div_num'] = data['div_num'][0]
 
             if boxes.shape[0] != 0:
-                adjusted_boxes = adjust_for_ortho(boxes, data['position'], data['div_num'])
-                    
+                global adjusted_boxes
+                if params['test'] == False:
+                    adjusted_boxes = adjust_for_ortho(boxes, data['position'], data['div_num'])
+                else:
+                    adjusted_boxes = adjust_for_ortho_for_test(boxes, data['position'], data['div_num'])
+                
                 scores_list.append(scores.to(torch.float).to(device))
                 labels_list.append(labels.to(torch.long).to(device))
                 boxes_list.append(adjusted_boxes.to(torch.float).to(device))
@@ -112,7 +114,11 @@ def main(model_path, epoch_num):
 
         # ----------------------------------------
         # unite image parts
-        ortho_img = unite_images(images_list, p_idxs, positions, div_nums)
+        global ortho_img
+        if params['test'] == False:
+            ortho_img = unite_images(images_list, p_idxs, positions, div_nums)
+        else:
+            ortho_img = unite_images_for_test(images_list, p_idxs, positions, div_nums)
         # ----------------------------------------
         
         # if scores and labels is torch tensor
@@ -127,7 +133,7 @@ def main(model_path, epoch_num):
 
         idxs = np.where(entire_scores>0.5)
          
-        if isPrediction == False:
+        if params['prediction'] == False:
         
             vis_label = []
             vis_idxs = []
@@ -141,7 +147,7 @@ def main(model_path, epoch_num):
                 idx = 0
                 for row in reader:
                     print(row)
-                    # boxがあるとき
+                    # When there are some boxes, do below
                     if row[1] != '': 
                         path = row[0]
                         img_name = path.split("/")[4] #change idx 4 to 5 if you use small dataset
@@ -176,7 +182,6 @@ def main(model_path, epoch_num):
                         vis_pos.append(pos)
                         vis_div.append(div)
                         idx+=1
-
             for i, bbox in enumerate(vis_bbox):
                 adjusted_boxes = adjust_for_ortho_for_vis(bbox, vis_pos[i], vis_div[0])
                 #vis_adjust.append(adjusted_boxes.to(torch.float).to(device))
@@ -200,10 +205,11 @@ def main(model_path, epoch_num):
 
         print("Now saving...")
         cv2.imwrite('./visualized_images/temp1004_Pix4d/30m/vis_{}epochs.png'.format(epoch_num), ortho_img)
+        #cv2.imwrite('./visualized_images/vis_test_1016.png', ortho_img)
         print("Finish saving")
         #cv2.waitKey(0)
 
 
 
 if __name__ == '__main__':
-    main("./saved_models/model_anchi_0522_1000epochs_pet.pth", 1000)
+    main("./saved_models/temp1004_Pix4d/20m/model_999epochs.pth", 1000)

@@ -184,7 +184,7 @@ class Trainer:
             # 評価
             #self.evaluate(epoch_num, dataset_val)
 
-            # モデルを保存する
+            # save the model & visualize the image
             self.scheduler.step(np.mean(epoch_loss))	
             self.retinanet.eval()
             if (epoch_num+1) % 5 == 0:
@@ -210,7 +210,7 @@ class Trainer:
                 input = data['img'].to(self.device).float()
                 annot = data['annot'].to(self.device)
 
-                # 非正規化
+                # unnormalization
                 img = np.array(255 * self.unnormalize(data['img'][0, :, :, :])).copy()
                 img = img[:,:600,:600]
                 img[img<0] = 0
@@ -218,12 +218,12 @@ class Trainer:
                 img = np.transpose(img, (1, 2, 0))
                 img = cv2.cvtColor(img.astype(np.uint8), cv2.COLOR_BGR2RGB)
 
-                img1d = np.sum(img, axis=-1) # rbgを合成->全ての値が0なら黒くなる
+                img1d = np.sum(img, axis=-1) # sum rgb values -> 0 means that the color is black
                 imgblack = np.where(img1d==0, 1, 0)
-                black_count = np.sum(imgblack)  # 黒い画像の数を計算
+                black_count = np.sum(imgblack)  # calcurate the number of the black image
                 ratio = black_count / (img1d.shape[0] * img1d.shape[1])
 
-                # 画像の8割がくらい時はその画像はretinanetの処理はしない
+                # When about 80% of the image is dark, do not process it
                 if ratio >= 0.8:
                     continue
 
