@@ -16,7 +16,7 @@ from model import resnet50
 from modules.nms_pytorch import NMS
 from modules.anchors import Anchors
 from modules.utils import BBoxTransform, ClipBoxes
-from modules.ortho_util import adjust_for_ortho, adjust_for_ortho_for_vis, adjust_for_ortho_for_test, unite_images, unite_images_for_test
+from modules.ortho_util import adjust_for_ortho, adjust_for_ortho_for_vis, adjust_for_ortho_for_test, adjust_for_ortho_for_vis_for_test, unite_images, unite_images_for_test
 from modules import losses
 
 print('CUDA available: {}'.format(torch.cuda.is_available()))
@@ -28,12 +28,12 @@ def main(model_path, epoch_num):
     params = {
             'dataset': 'csv',
             'coco_path': '',
-            'csv_classes': './csv_data/temp1004_Pix4d/30m/annotations/class_id.csv',
-            'csv_val': './csv_data/temp1004_Pix4d/30m/annotations/annotation.csv',
+            'csv_classes': './test_dataset/komesu/annotations/class_id.csv',
+            'csv_val': './test_dataset/komesu/annotations/annotation.csv',
             'model': model_path,
-            'num_class': 3,
+            'num_class': 7,
             'prediction': True,
-            'test': False,
+            'test': True,
             }
     device = torch.device('cuda:1' if torch.cuda.is_available() else 'cpu')
 
@@ -120,7 +120,9 @@ def main(model_path, epoch_num):
         else:
             ortho_img = unite_images_for_test(images_list, p_idxs, positions, div_nums)
         # ----------------------------------------
-        
+
+        #print(scores_list)
+
         # if scores and labels is torch tensor
         scores_list = torch.cat(tuple(scores_list), 0).cpu()
         labels_list = torch.cat(tuple(labels_list), 0).cpu()
@@ -169,12 +171,21 @@ def main(model_path, epoch_num):
                         y2 = float(row[4].replace("'", " "))
                         label = row[5]
                         bbox = [x1, x2, y1, y2]
-                        if label == "driftwood":
+                        if label == "tree":
                             label = 0
-                        elif label == "plasticbottle":
+                        elif label == "rope":
                             label = 1
-                        else:
+                        elif label == "plasticbottle":
                             label = 2
+                        elif label == "net":
+                            labee = 3
+                        elif label == "spraycan":
+                            label = 4
+                        elif label == "bucket":
+                            label = 5
+                        elif label == "buoy":
+                            label = 6
+
         
                         vis_bbox.append(bbox)
                         vis_label.append(label)
@@ -184,6 +195,11 @@ def main(model_path, epoch_num):
                         idx+=1
             for i, bbox in enumerate(vis_bbox):
                 adjusted_boxes = adjust_for_ortho_for_vis(bbox, vis_pos[i], vis_div[0])
+                #global adjusted_boxes
+                #if params['test'] == False:
+                #    adjusted_boxes = adjust_for_ortho(bbox, vis_pos[i], vis_div[0])
+                #else:
+                #    adjusted_boxes = adjust_for_ortho_for_test(bbox, vis_pos[i], vis_div[0])
                 #vis_adjust.append(adjusted_boxes.to(torch.float).to(device))
                 vis_adjust.append(adjusted_boxes)
             vis_adjust = torch.tensor(vis_adjust)
@@ -200,11 +216,27 @@ def main(model_path, epoch_num):
             y2 = int(bbox[3])
             label_name = dataset_val.labels[int(entire_labels[idxs[0][j]])]
             draw_caption(ortho_img, (x1, y1, x2, y2), label_name)
-
-            cv2.rectangle(ortho_img, (x1, y1), (x2, y2), color=(0, 0, 255), thickness=2)
+            if label_name == "tree":
+                cv2.rectangle(ortho_img, (x1, y1), (x2, y2), color=(0, 0, 255), thickness=2)
+            if label_name == "rope":
+                cv2.rectangle(ortho_img, (x1, y1), (x2, y2), color=(255, 0, 0), thickness=2)
+            if label_name == "plasticbottle":
+                cv2.rectangle(ortho_img, (x1, y1), (x2, y2), color=(0, 255, 0), thickness=2)
+            if label_name == "net":
+                cv2.rectangle(ortho_img, (x1, y1), (x2, y2), color=(100, 100, 0), thickness=2)
+            if label_name == "spraycan":
+                cv2.rectangle(ortho_img, (x1, y1), (x2, y2), color=(0, 100, 100), thickness=2)
+            if label_name == "bucket":
+                cv2.rectangle(ortho_img, (x1, y1), (x2, y2), color=(100, 0, 100), thickness=2)
+            if label_name == "buoy":
+                cv2.rectangle(ortho_img, (x1, y1), (x2, y2), color=(50, 100, 200), thickness=2)
 
         print("Now saving...")
-        cv2.imwrite('./visualized_images/temp1004_Pix4d/30m/vis_{}epochs.png'.format(epoch_num), ortho_img)
+        global ortho_img
+        if params["test"] == True:
+            # clip original size from ortho_img made in RetinaNet
+            ortho_img = ortho_img[0:9704,0:11522] 
+        cv2.imwrite('./visualized_images/test_dataset/komesu/vis_{}epochs.png'.format(epoch_num), ortho_img)
         #cv2.imwrite('./visualized_images/vis_test_1016.png', ortho_img)
         print("Finish saving")
         #cv2.waitKey(0)
@@ -212,4 +244,4 @@ def main(model_path, epoch_num):
 
 
 if __name__ == '__main__':
-    main("./saved_models/temp1004_Pix4d/20m/model_999epochs.pth", 1000)
+    main("./saved_models/kudeken_makiya/model_599epochs.pth", 600)

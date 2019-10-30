@@ -42,13 +42,13 @@ class Trainer:
         self.coco_path = './data'
 
         # Path to file containing training annotations (see readme)
-        self.csv_train ='./csv_data/temp1004_Pix4d/30m/annotations/annotation.csv'
+        self.csv_train ='./csv_data/kudeken_makiya/annotations/annotation.csv'
 
         # Path to file containing class list (see readme)
-        self.csv_classes = './csv_data/temp1004_Pix4d/30m/annotations/class_id.csv'
+        self.csv_classes = './csv_data/kudeken_makiya/annotations/pet_class_id.csv'
 
         # Path to file containing validation annotations (optional, see readme)
-        self.csv_val = './csv_data/temp1004_Pix4d/30m/annotations/annotation.csv'
+        self.csv_val = './csv_data/kudeken_makiya/annotations/annotation.csv'
 
         # Resnet depth, must be one of 18, 34, 50, 101, 152
         self.depth = 50
@@ -60,7 +60,7 @@ class Trainer:
         self.lr = 6e-5
 
         # Number of epochs
-        self.epochs = 1000
+        self.epochs = 600
 
         # Number of save epochs
         #self.save_freq = 5
@@ -187,14 +187,15 @@ class Trainer:
             # save the model & visualize the image
             self.scheduler.step(np.mean(epoch_loss))	
             self.retinanet.eval()
-            if (epoch_num+1) % 5 == 0:
+            if (epoch_num+1) % 20 == 0:
                 self.evaluate(epoch_num, dataset_val)
 
-            if (epoch_num+1) % 200 == 0:# or epoch_num == 10:
+            if (epoch_num+1) % 100 == 0:# or epoch_num == 10:
                 #self.evaluate(epoch_num, dataset_val)
-                model_path = os.path.join('./saved_models/temp1004_Pix4d/30m/', 'model_{}epochs.pth'.format(epoch_num))
+                model_path = os.path.join('./saved_models/kudeken_makiya/', 'pet_model_{}epochs.pth'.format(epoch_num))
                 torch.save(self.retinanet.state_dict(), model_path)
-                
+            
+            if (epoch_num+1) % 10000 == 0:
                 visualize(model_path, epoch_num)
                 #self.experiment.log_image(image_data=vis_img)
 

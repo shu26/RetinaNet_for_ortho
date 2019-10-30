@@ -51,9 +51,8 @@ def adjust_for_ortho_for_test(boxes, position, div_num):
         br_x = box[2]
         br_y = box[3]
         # start position from 0 not 1
-        adj_x = (position[1] - 1) * 480
-        adj_y = (position[0] - 1) * 480
-
+        adj_x = (position[1]) * 480
+        adj_y = (position[0]) * 480
         out_box = torch.tensor([
             tl_x + adj_x,
             tl_y + adj_y,
@@ -68,6 +67,23 @@ def adjust_for_ortho_for_test(boxes, position, div_num):
                 (out_boxes, out_box), 0)
 
     return out_boxes
+
+def adjust_for_ortho_for_vis_for_test(box, position, div_num):
+    tl_x = box[0]
+    tl_y = box[1]
+    br_x = box[2]
+    br_y = box[3]
+    
+    adj_x = (position[1]-1) * 480
+    adj_y = (position[0]-1) * 480
+
+    out_box = [
+            tl_x + adj_x,
+            tl_y + adj_y,
+            br_x + adj_x,
+            br_y + adj_y]
+    
+    return out_box
 
 
 # this is tmporal implementation term presentation
@@ -99,8 +115,8 @@ def unite_images(images, idxs, positions, div_nums):
 
 def unite_images_for_test(images, idxs, positions, div_nums):
     
-    div_num_x = div_nums[0][0]  # 34 line
-    div_num_y = div_nums[0][1]  # 47 row
+    div_num_x = div_nums[0][0]  # line
+    div_num_y = div_nums[0][1]  # row
 
     sorted_images = images.copy()
     
@@ -118,8 +134,8 @@ def unite_images_for_test(images, idxs, positions, div_nums):
     new_img = np.zeros((all_height, all_width, 3), np.uint8)
     cv2.rectangle(new_img, (0, 0), (all_width, all_height), (255, 0, 0), -1)
 
-    for i in range(div_num_x):  #34
-        for j in range(div_num_y): #47
+    for i in range(div_num_x):  
+        for j in range(div_num_y): 
             print(i,j)
             w,h,_ = sorted_images[count].shape
             new_img[480*i:480*i+w:, 480*j:480*j+h] = sorted_images[count] # [y, x]

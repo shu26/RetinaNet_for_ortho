@@ -291,9 +291,10 @@ def evaluate(
 
     # precisionとrecallは平均だけ出すようにする
     mean_precision = [sum(average_precisions[0]) / len(average_precisions[0])] 
-    mean_recalls = [0,0,0]
-    mean_precisions = [0,0,0]
+    mean_recalls = [0,0,0,0,0,0,0]
+    mean_precisions = [0,0,0,0,0,0,0]
     print('\nrecall:')
+    print(all_recalls)
     for label in range(generator.num_classes()):
         if isinstance(all_recalls[label], int):
             #all_recalls[label] = 0
