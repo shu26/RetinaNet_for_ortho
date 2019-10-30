@@ -310,6 +310,7 @@ def evaluate(
         print('{}: {}'.format(label_name, all_recalls[label][-1]))
     
     print('\nprecision:')
+    print(all_precisions)
     for label in range(generator.num_classes()):
         if isinstance(all_precisions[label],int):
             #all_precisions[label] = 0
@@ -329,5 +330,8 @@ def evaluate(
         label_name = generator.label_to_name(label)
         print('{}: {}'.format(label_name, average_precisions[label][0]))
 
-    return all_recalls[1][-1], all_precisions[1][-1], average_precisions
+    print(all_recalls[0][-1])
+    print(all_precisions[0][-1])
+    print(average_precisions)
+    return all_recalls[0][-1], all_precisions[0][-1], average_precisions
 

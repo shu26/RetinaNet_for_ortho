@@ -187,7 +187,7 @@ class Trainer:
             # save the model & visualize the image
             self.scheduler.step(np.mean(epoch_loss))	
             self.retinanet.eval()
-            if (epoch_num+1) % 20 == 0:
+            if (epoch_num+1) % 1 == 0:
                 self.evaluate(epoch_num, dataset_val)
 
             if (epoch_num+1) % 100 == 0:# or epoch_num == 10:
@@ -276,7 +276,7 @@ class Trainer:
             metrics = {
                     'precision': precision,
                     'recall': recall,
-                    'mAP': mAP[1][0]
+                    'mAP': mAP
                     }
 
             self.experiment.log_metrics(metrics, step=epoch_num)

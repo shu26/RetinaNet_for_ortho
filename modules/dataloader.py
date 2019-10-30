@@ -286,7 +286,7 @@ class CSVDataset(Dataset):
                 result[img_file] = []
 
             # If a row contains only an image path, it's an image without annotations.
-            if class_name == 'buoy' or class_name == 'driftwood':
+            if not class_name == 'plasticbottle':
                 x1, y1, x2, y2, class_name = '', '', '', '', ''
 
             if (x1, y1, x2, y2, class_name) == ('', '', '', '', ''):
