@@ -9,12 +9,12 @@ from sklearn.cluster import KMeans
 
 def main():
     size = 600
-    slide_size = size * 0.8
+    slide_size = int(size * 0.8)
     count = 0
-    v_count = 0
-    h_count = 0
+    v_count = 1
+    h_count = 1
 
-    img_default = tifffile.imread("ortho_image/ortho_anchi.tif")
+    img_default = tifffile.imread("../../Desktop/Orthor_experiment/original_dataset/1004_Pix4d/20m.tif")
     img = cv2.cvtColor(img_default, cv2.COLOR_BGR2RGB)
 
     # 元画像のサイズ
@@ -42,7 +42,7 @@ def main():
 
     for i in range(int(v_slide_count)):
         v_count+=1
-        h_count=0
+        h_count=1
         for j in range(int(h_slide_count)):
             h_count+=1
             im_crop = img[slide_size * i : slide_size * i + size,
@@ -75,7 +75,7 @@ def main():
         #if (cluster_centers_arr==black).all():
         #  file_name = "./anchi/images_for_test_0406/black/{0}_{1}_{2}.png".format(count,out_place,split_count)
         #else:
-        file_name = "./anchi/0422/{0}_{1}_{2}.png".format(count,out_place,split_count)
+        file_name = "../../Desktop/Orthor_experiment/test_dataset/komesu/images/{0}_{1}_{2}.png".format(count,out_place,split_count)
         cv2.imwrite(file_name, i)
         count+=1
 

@@ -5,11 +5,11 @@ import json
 
 def main():
   # Open image directory
-  files_path = "./data_for_test/non_separate_0408"
+  files_path = "../../Desktop/Orthor_experiment/test_dataset/komesu/images"
   files = os.listdir(files_path)
 
   for fname in files:
-    with open("./data_for_test/annotations/annotation.csv","a") as f:
+    with open("test_dataset/komesu/annotations/annotation.csv","a") as f:
       writer=csv.writer(f)
       path=files_path + '/' + fname
       writer.writerow([path,None,None,None,None,None])
