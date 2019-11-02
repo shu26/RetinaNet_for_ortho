@@ -28,10 +28,10 @@ def main(model_path, epoch_num):
     params = {
             'dataset': 'csv',
             'coco_path': '',
-            'csv_classes': './test_dataset/komesu/annotations/class_id.csv',
-            'csv_val': './test_dataset/komesu/annotations/annotation.csv',
+            'csv_classes': './csv_data/split_dataset/makiya/annotations/pet_class_id.csv',
+            'csv_val': './csv_data/split_dataset/makiya/annotations/annotation.csv',
             'model': model_path,
-            'num_class': 7,
+            'num_class': 1,
             'prediction': True,
             'test': True,
             }
@@ -236,7 +236,7 @@ def main(model_path, epoch_num):
         if params["test"] == True:
             # clip original size from ortho_img made in RetinaNet
             ortho_img = ortho_img[0:9704,0:11522] 
-        cv2.imwrite('./visualized_images/test_dataset/komesu/vis_{}epochs.png'.format(epoch_num), ortho_img)
+        cv2.imwrite('./visualized_images/split_dataset/makiya/vis_{}epochs.png'.format(epoch_num), ortho_img)
         #cv2.imwrite('./visualized_images/vis_test_1016.png', ortho_img)
         print("Finish saving")
         #cv2.waitKey(0)
@@ -244,4 +244,4 @@ def main(model_path, epoch_num):
 
 
 if __name__ == '__main__':
-    main("./saved_models/kudeken_makiya/model_599epochs.pth", 600)
+    main("./saved_models/kudeken_makiya/pet_model_499epochs.pth", 500)

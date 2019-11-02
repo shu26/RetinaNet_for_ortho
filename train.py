@@ -42,13 +42,13 @@ class Trainer:
         self.coco_path = './data'
 
         # Path to file containing training annotations (see readme)
-        self.csv_train ='./csv_data/kudeken_makiya/annotations/annotation.csv'
+        self.csv_train ='./csv_data/split_dataset/makiya/annotations/annotation.csv'
 
         # Path to file containing class list (see readme)
-        self.csv_classes = './csv_data/kudeken_makiya/annotations/pet_class_id.csv'
+        self.csv_classes = './csv_data/split_dataset/makiya/annotations/pet_class_id.csv'
 
         # Path to file containing validation annotations (optional, see readme)
-        self.csv_val = './csv_data/kudeken_makiya/annotations/annotation.csv'
+        self.csv_val = './csv_data/split_dataset/makiya/annotations/annotation.csv'
 
         # Resnet depth, must be one of 18, 34, 50, 101, 152
         self.depth = 50
@@ -57,10 +57,10 @@ class Trainer:
         self.bs = 6
 
         # learning rate
-        self.lr = 6e-5
+        self.lr = 1e-4
 
         # Number of epochs
-        self.epochs = 600
+        self.epochs = 500
 
         # Number of save epochs
         #self.save_freq = 5
@@ -152,7 +152,7 @@ class Trainer:
         self.retinanet.training = True
         self.optimizer = optim.Adam(self.retinanet.parameters(), lr=self.lr)
         # This lr_shceduler reduce the learning rate based on the models's validation loss
-        self.scheduler = optim.lr_scheduler.ReduceLROnPlateau(self.optimizer, patience=3, verbose=True)
+        self.scheduler = optim.lr_scheduler.ReduceLROnPlateau(self.optimizer, patience=6, verbose=True)
         self.loss_hist = collections.deque(maxlen=500)
 
     
@@ -192,9 +192,10 @@ class Trainer:
 
             if (epoch_num+1) % 100 == 0:# or epoch_num == 10:
                 #self.evaluate(epoch_num, dataset_val)
-                model_path = os.path.join('./saved_models/kudeken_makiya/', 'pet_model_{}epochs.pth'.format(epoch_num))
+                model_path = os.path.join('./saved_models/split_dataset/makiya/', 'pet_model_{}epochs.pth'.format(epoch_num))
                 torch.save(self.retinanet.state_dict(), model_path)
-            
+                visualize(model_path, epoch_num)
+
             if (epoch_num+1) % 10000 == 0:
                 visualize(model_path, epoch_num)
                 #self.experiment.log_image(image_data=vis_img)
@@ -276,7 +277,7 @@ class Trainer:
             metrics = {
                     'precision': precision,
                     'recall': recall,
-                    'mAP': mAP[0][1]
+                    'mAP': mAP[0][0]
                     }
 
             self.experiment.log_metrics(metrics, step=epoch_num)
