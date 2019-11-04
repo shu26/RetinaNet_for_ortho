@@ -187,12 +187,12 @@ class Trainer:
             # save the model & visualize the image
             self.scheduler.step(np.mean(epoch_loss))	
             self.retinanet.eval()
-            if (epoch_num+1) % 20 == 0:
+            if (epoch_num+1) % 1 == 0:
                 self.evaluate(epoch_num, dataset_val)
 
             if (epoch_num+1) % 100 == 0:# or epoch_num == 10:
                 #self.evaluate(epoch_num, dataset_val)
-                model_path = os.path.join('./saved_models/split_dataset/makiya/', 'pet_model_{}epochs.pth'.format(epoch_num))
+                model_path = os.path.join('./saved_models/split_dataset/makiya/', 'pet1_model_{}epochs.pth'.format(epoch_num))
                 torch.save(self.retinanet.state_dict(), model_path)
                 visualize(model_path, epoch_num)
 
@@ -279,6 +279,10 @@ class Trainer:
                     'recall': recall,
                     'mAP': mAP[0][0]
                     }
+
+            print("precision: ", precision)
+            print("recall: ", recall)
+            print("mAP: ", mAP[0][0])
 
             self.experiment.log_metrics(metrics, step=epoch_num)
 

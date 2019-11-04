@@ -72,7 +72,7 @@ def _compute_ap(recall, precision):
     return ap
 
 
-def _get_detections(dataset, retinanet, nms, device, score_threshold=0.05, max_detections=100, save_path=None):
+def _get_detections(dataset, retinanet, nms, device, score_threshold=0.5, max_detections=200, save_path=None):
     """ Get the detections from the retinanet using the generator.
     The result is a list of lists such that the size is:
         all_detections[num_images][num_classes] = detections[num_detections, 4 + num_classes]
@@ -165,9 +165,9 @@ def evaluate(
     retinanet,
     nms,
     device,
-    iou_threshold=0.5,
+    iou_threshold=0.15,
     score_threshold=0.5,
-    max_detections=100,
+    max_detections=500,
     save_path=None
 ):
     """ Evaluate a given dataset using a given retinanet.
@@ -194,6 +194,7 @@ def evaluate(
     for label in range(generator.num_classes()):
         false_positives = np.zeros((0,))
         true_positives  = np.zeros((0,))
+        #false_negatives = np.zeros((0,))
         scores          = np.zeros((0,))
         num_annotations = 0.0
 
@@ -209,6 +210,7 @@ def evaluate(
                 if annotations.shape[0] == 0:
                     false_positives = np.append(false_positives, 1)
                     true_positives  = np.append(true_positives, 0)
+                    #false_negatives = np.append(false_negatives, 1)
                     continue
 
                 overlaps            = compute_overlap(np.expand_dims(d, axis=0), annotations)
@@ -218,10 +220,20 @@ def evaluate(
                 if max_overlap >= iou_threshold and assigned_annotation not in detected_annotations:
                     false_positives = np.append(false_positives, 0)
                     true_positives  = np.append(true_positives, 1)
+                    #false_negatives = np.append(false_negatives, 0)
                     detected_annotations.append(assigned_annotation)
+                elif max_overlap >= iou_threshold and assigned_annotation in detected_annotations:
+                    continue
+                    #false_positives = np.append(false_positives, 1)
+                    #true_positives  = np.append(true_positives, 0)
+                    #false_negatives = np.append(false_negatives, 0)
                 else:
                     false_positives = np.append(false_positives, 1)
                     true_positives  = np.append(true_positives, 0)
+                    #false_negatives = np.append(false_negatives, 0)
+
+        #print("false_positives_aaaaaa: ", len(false_positives))
+        #print("false_positives_aaaaaa: ", false_positives)
 
         # no annotations -> AP for this class is 0 (is this correct?)
         if num_annotations == 0:
@@ -231,44 +243,52 @@ def evaluate(
             continue
 
         # sort by score
-        print("===================")
-        print(scores)
-        print()
-        print(-scores)
-        print("===================")
+        #print("===================")
+        #print("scores")
+        #print(scores)
         
-        indices         = np.argsort(-scores)
-        print("===================")
-        print(indices)
-        print("===================")
-        false_positives = false_positives[indices]
-        true_positives  = true_positives[indices]
-
+        #indices         = np.argsort(-scores)
+        #print("===================")
+        #print("indices")
+        #print(indices)
+        #false_positives = false_positives[indices]
+        #true_positives  = true_positives[indices]
+        #false_negatives = false_negatives[indices]
+        
         print(":::::::::::::::::::::::::::::::::")
+        print("false_positives")
         print(false_positives)
+        print("true_positives")
         print(true_positives)
-        print(":::::::::::::::::::::::::::::::::")
+        #print("false_negatives")
+        #print(false_negatives)
 
         # compute false positives and true positives
         false_positives = np.cumsum(false_positives)
         true_positives  = np.cumsum(true_positives)
+        #false_negatives = np.cumsum(false_negatives)
 
         print("::::::::::::::::::::")
+        print("false_positives after cumsum")
         print(false_positives)
+        print("true_positives after cumsum")
         print(true_positives)
-        print()
+        #print("false_negatives after cumsum")
+        #print(false_negatives)
+        print("num_annotations")
         print(num_annotations)
-        print("::::::::::::::::::::")
 
         # compute recall and precision
+        #recall = true_positives / (true_positives + false_negatives)
         recall    = true_positives / num_annotations
         precision = true_positives / (true_positives + false_positives)
         #precision = true_positives / np.maximum(true_positives + false_positives, np.finfo(np.float64).eps)
 
         print("::::::::")
+        print("recall")
         print(recall)
+        print("precision")
         print(precision)
-        print("::::::::")
 
         if len(recall) == 0:
             all_recalls[label] = [0.]
@@ -284,10 +304,10 @@ def evaluate(
         average_precision  = _compute_ap(recall, precision)
         average_precisions[label] = average_precision, num_annotations
         print("::::::::::::::::::::::::::::::::::::::::::::::::::")
+        print("average_precision")
         print(average_precision)
-        print()
+        print("average_precisions")
         print(average_precisions)
-        print("::::::::::::::::::::::::::::::::::::::::::::::::::")
 
     # precisionとrecallは平均だけ出すようにする
     mean_precision = [sum(average_precisions[0]) / len(average_precisions[0])] 
