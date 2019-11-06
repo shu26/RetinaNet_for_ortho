@@ -49,15 +49,6 @@ def _compute_ap(recall, precision):
     mrec = np.concatenate(([0.], recall, [1.]))
     mpre = np.concatenate(([0.], precision, [0.]))
 
-    print("-- compute_ap --")
-    print()
-    print("mrec")
-    print(mrec)
-    print()
-    print("mpre")
-    print(mpre)
-    print()
-
     # compute the precision envelope
     for i in range(mpre.size - 1, 0, -1):
         mpre[i - 1] = np.maximum(mpre[i - 1], mpre[i])
@@ -72,7 +63,7 @@ def _compute_ap(recall, precision):
     return ap
 
 
-def _get_detections(dataset, retinanet, nms, device, score_threshold=0.5, max_detections=200, save_path=None):
+def _get_detections(dataset, retinanet, nms, device, score_threshold=0.7, max_detections=40, save_path=None):
     """ Get the detections from the retinanet using the generator.
     The result is a list of lists such that the size is:
         all_detections[num_images][num_classes] = detections[num_detections, 4 + num_classes]
@@ -166,8 +157,8 @@ def evaluate(
     nms,
     device,
     iou_threshold=0.15,
-    score_threshold=0.5,
-    max_detections=500,
+    score_threshold=0.7,
+    max_detections=40,
     save_path=None
 ):
     """ Evaluate a given dataset using a given retinanet.
@@ -191,10 +182,18 @@ def evaluate(
     all_precisions = {}
     all_recalls = {}
 
+    sampleE = 0
+    sample0 = 0
+    sample1 = 0
+    sample2 = 0
+    sample3 = 0
+
+    print("all_annotations: ", len(all_annotations))
+    print("all_detections: ", len(all_detections))
+
     for label in range(generator.num_classes()):
         false_positives = np.zeros((0,))
         true_positives  = np.zeros((0,))
-        #false_negatives = np.zeros((0,))
         scores          = np.zeros((0,))
         num_annotations = 0.0
 
@@ -210,30 +209,35 @@ def evaluate(
                 if annotations.shape[0] == 0:
                     false_positives = np.append(false_positives, 1)
                     true_positives  = np.append(true_positives, 0)
-                    #false_negatives = np.append(false_negatives, 1)
+                    sampleE+=1     
                     continue
 
+                # overlapは配列で帰ってくる
                 overlaps            = compute_overlap(np.expand_dims(d, axis=0), annotations)
+                # 配列に該当するovrlapのindexを取得
                 assigned_annotation = np.argmax(overlaps, axis=1)
                 max_overlap         = overlaps[0, assigned_annotation]
 
+                #FIXME:
+                #detected_annotationsにassidned_annotationがあるかどうかを判断すると，一回検出された物体はダメってことになるけど，bboxがいっぱい出ちゃってる場合には，TPとしていいのでは→nmsが怪しいと思ったが，表示結果からもミスはなさそう．てかそもそも対象物体を一つに絞っている段階で全てペットボトルに対するpredictionになるから，assidned_annotaitonを確認して条件分岐するのは間違ってない．→false_positiveがめちゃでる理由がわからない
                 if max_overlap >= iou_threshold and assigned_annotation not in detected_annotations:
                     false_positives = np.append(false_positives, 0)
                     true_positives  = np.append(true_positives, 1)
-                    #false_negatives = np.append(false_negatives, 0)
                     detected_annotations.append(assigned_annotation)
+                    sample0+=1
                 elif max_overlap >= iou_threshold and assigned_annotation in detected_annotations:
-                    continue
                     #false_positives = np.append(false_positives, 1)
                     #true_positives  = np.append(true_positives, 0)
-                    #false_negatives = np.append(false_negatives, 0)
-                else:
+                    sample1+=1
+                    continue
+                elif max_overlap < iou_threshold and assigned_annotation not in detected_annotations:
                     false_positives = np.append(false_positives, 1)
                     true_positives  = np.append(true_positives, 0)
-                    #false_negatives = np.append(false_negatives, 0)
-
-        #print("false_positives_aaaaaa: ", len(false_positives))
-        #print("false_positives_aaaaaa: ", false_positives)
+                    sample2+=1
+                else:
+                    sample3+=1
+                    false_positives = np.append(false_positives, 1)
+                    true_positives  = np.append(true_positives, 0)
 
         # no annotations -> AP for this class is 0 (is this correct?)
         if num_annotations == 0:
@@ -242,47 +246,19 @@ def evaluate(
             average_precisions[label] = 0, 0
             continue
 
-        # sort by score
-        #print("===================")
-        #print("scores")
-        #print(scores)
-        
-        #indices         = np.argsort(-scores)
-        #print("===================")
-        #print("indices")
-        #print(indices)
-        #false_positives = false_positives[indices]
-        #true_positives  = true_positives[indices]
-        #false_negatives = false_negatives[indices]
-        
-        print(":::::::::::::::::::::::::::::::::")
-        print("false_positives")
-        print(false_positives)
-        print("true_positives")
-        print(true_positives)
-        #print("false_negatives")
-        #print(false_negatives)
+        print("false_positives: ", false_positives)
+        print("true_positives: ", true_positives)
 
         # compute false positives and true positives
         false_positives = np.cumsum(false_positives)
         true_positives  = np.cumsum(true_positives)
-        #false_negatives = np.cumsum(false_negatives)
-
-        print("::::::::::::::::::::")
-        print("false_positives after cumsum")
-        print(false_positives)
-        print("true_positives after cumsum")
-        print(true_positives)
-        #print("false_negatives after cumsum")
-        #print(false_negatives)
-        print("num_annotations")
-        print(num_annotations)
+        print("sum up false_positives: ", false_positives)
+        print("sum up true_positives: ", true_positives)
+        print("num of annotations: ", num_annotations)
 
         # compute recall and precision
-        #recall = true_positives / (true_positives + false_negatives)
         recall    = true_positives / num_annotations
         precision = true_positives / (true_positives + false_positives)
-        #precision = true_positives / np.maximum(true_positives + false_positives, np.finfo(np.float64).eps)
 
         print("::::::::")
         print("recall")
@@ -353,5 +329,6 @@ def evaluate(
     print(all_recalls[0][-1])
     print(all_precisions[0][-1])
     print(average_precisions)
+    print("sampleE: {}, sample0: {}, sample1: {}, sample2: {}, sample3: {}".format(sampleE,sample0,sample1,sample2,sample3))
     return all_recalls[0][-1], all_precisions[0][-1], average_precisions
 
