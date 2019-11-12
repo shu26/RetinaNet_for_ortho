@@ -236,7 +236,7 @@ def main(model_path, epoch_num):
         if params["test"] == True:
             # clip original size from ortho_img made in RetinaNet
             ortho_img = ortho_img[0:9704,0:11522] 
-        cv2.imwrite('./visualized_images/split_dataset/makiya/pet1_vis_{}epochs.png'.format(epoch_num), ortho_img)
+        cv2.imwrite('./visualized_images/split_dataset/makiya/pet2_vis_{}epochs.png'.format(epoch_num), ortho_img)
         #cv2.imwrite('./visualized_images/vis_test_1016.png', ortho_img)
         print("Finish saving")
         #cv2.waitKey(0)
@@ -244,4 +244,4 @@ def main(model_path, epoch_num):
 
 
 if __name__ == '__main__':
-    main("./saved_models/split_dataset/makiya/pet_model_499epochs.pth", 499)
+    main("./saved_models/split_dataset/makiya/pet2_model_499epochs.pth", 499)

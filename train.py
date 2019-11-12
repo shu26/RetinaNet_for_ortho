@@ -42,13 +42,13 @@ class Trainer:
         self.coco_path = './data'
 
         # Path to file containing training annotations (see readme)
-        self.csv_train ='./csv_data/split_dataset/makiya/annotations/annotation.csv'
+        self.csv_train ='./csv_data/split_dataset/makiya/annotations/pet_annotation.csv'
 
         # Path to file containing class list (see readme)
         self.csv_classes = './csv_data/split_dataset/makiya/annotations/pet_class_id.csv'
 
         # Path to file containing validation annotations (optional, see readme)
-        self.csv_val = './csv_data/split_dataset/makiya/annotations/annotation.csv'
+        self.csv_val = './csv_data/split_dataset/makiya/annotations/pet_annotation.csv'
 
         # Resnet depth, must be one of 18, 34, 50, 101, 152
         self.depth = 50
@@ -60,7 +60,7 @@ class Trainer:
         self.lr = 1e-4
 
         # Number of epochs
-        self.epochs = 500
+        self.epochs = 200
 
         # Number of save epochs
         #self.save_freq = 5
@@ -121,6 +121,8 @@ class Trainer:
             if self.csv_classes is None:
                 raise ValueError('Must provide --csv_classes when training on COCO,')
             dataset_train = CSVDataset(train_file=self.csv_train, class_list=self.csv_classes, transform=transforms.Compose([Normalizer(), Augmenter(), Resizer()]))
+            print("dataset_train: ")
+            print(dataset_train)
             if self.csv_val is None:
                 dataset_val = None
                 print('No validation annotations provided.')
@@ -192,9 +194,9 @@ class Trainer:
 
             if (epoch_num+1) % 100 == 0:# or epoch_num == 10:
                 #self.evaluate(epoch_num, dataset_val)
-                model_path = os.path.join('./saved_models/split_dataset/makiya/', 'pet1_model_{}epochs.pth'.format(epoch_num))
+                model_path = os.path.join('./saved_models/split_dataset/makiya/', 'pet3_model_{}epochs.pth'.format(epoch_num))
                 torch.save(self.retinanet.state_dict(), model_path)
-                visualize(model_path, epoch_num)
+                #visualize(model_path, epoch_num)
 
             if (epoch_num+1) % 10000 == 0:
                 visualize(model_path, epoch_num)

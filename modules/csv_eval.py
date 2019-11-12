@@ -63,7 +63,7 @@ def _compute_ap(recall, precision):
     return ap
 
 
-def _get_detections(dataset, retinanet, nms, device, score_threshold=0.7, max_detections=40, save_path=None):
+def _get_detections(dataset, retinanet, nms, device, score_threshold=0.9, max_detections=13, save_path=None):
     """ Get the detections from the retinanet using the generator.
     The result is a list of lists such that the size is:
         all_detections[num_images][num_classes] = detections[num_detections, 4 + num_classes]
@@ -157,8 +157,8 @@ def evaluate(
     nms,
     device,
     iou_threshold=0.15,
-    score_threshold=0.7,
-    max_detections=40,
+    score_threshold=0.9,
+    max_detections=13,
     save_path=None
 ):
     """ Evaluate a given dataset using a given retinanet.
@@ -218,16 +218,14 @@ def evaluate(
                 assigned_annotation = np.argmax(overlaps, axis=1)
                 max_overlap         = overlaps[0, assigned_annotation]
 
-                #FIXME:
-                #detected_annotationsにassidned_annotationがあるかどうかを判断すると，一回検出された物体はダメってことになるけど，bboxがいっぱい出ちゃってる場合には，TPとしていいのでは→nmsが怪しいと思ったが，表示結果からもミスはなさそう．てかそもそも対象物体を一つに絞っている段階で全てペットボトルに対するpredictionになるから，assidned_annotaitonを確認して条件分岐するのは間違ってない．→false_positiveがめちゃでる理由がわからない
                 if max_overlap >= iou_threshold and assigned_annotation not in detected_annotations:
                     false_positives = np.append(false_positives, 0)
                     true_positives  = np.append(true_positives, 1)
                     detected_annotations.append(assigned_annotation)
                     sample0+=1
                 elif max_overlap >= iou_threshold and assigned_annotation in detected_annotations:
-                    #false_positives = np.append(false_positives, 1)
-                    #true_positives  = np.append(true_positives, 0)
+                    false_positives = np.append(false_positives, 1)
+                    true_positives  = np.append(true_positives, 0)
                     sample1+=1
                     continue
                 elif max_overlap < iou_threshold and assigned_annotation not in detected_annotations:
