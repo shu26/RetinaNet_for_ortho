@@ -153,24 +153,9 @@ class CSVDataset(Dataset):
         try:
             with self._open_for_csv(self.train_file) as file:
                 self.image_data = self._read_annotations(csv.reader(file, delimiter=','), self.classes)
-                print("self.image_data: ")
-                print(self.image_data)
-                print("len(): ", len(self.image_data))
-                data_frame = pd.DataFrame(self.image_data)
-                print("data_frame: ")
-                print(data_frame)
-                #FIXME:
-                a_train, a_test = train_test_split(self.image_data, test_size=0.2)
-                print("a_train: ")
-                print(a_train)
-                print("a_test: ")
-                print(a_test)
         except ValueError as e:
             raise_from(ValueError('invalid CSV annotations file: {}: {}'.format(self.train_file, e)), None)
         self.image_names = list(self.image_data.keys())
-        #print("self.image_names: ")
-        #print(self.image_names)
-
 
     def _parse(self, value, function, fmt):
         """
