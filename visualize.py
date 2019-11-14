@@ -230,6 +230,8 @@ def main(model_path, epoch_num):
                 cv2.rectangle(ortho_img, (x1, y1), (x2, y2), color=(100, 0, 100), thickness=2)
             if label_name == "buoy":
                 cv2.rectangle(ortho_img, (x1, y1), (x2, y2), color=(50, 100, 200), thickness=2)
+        dataset_val = set_dataset()
+        evaluate(epoch_num, dataset_val)
 
         print("Now saving...")
         global ortho_img
@@ -242,6 +244,29 @@ def main(model_path, epoch_num):
         #cv2.waitKey(0)
 
 
+        def set_dataset():
+            dataset_val = CSVDataset(train_file=params["csv_val"], class_list=paranms["csv_classes"], transform=transforms.Compose([Normalizer(), Resizer()]))
+            return dataset_val
+
+        def evaluate(self, epoch_num, dataset_val):
+            print('-------------------------------------')
+            if self.dataset == 'csv' and self.csv_val is not None:
+
+                print('Evaluating dataset csv')
+
+                recall, precision, mAP = csv_eval.evaluate(dataset_val, self.retinanet, self.nms, self.device)
+                metrics = {
+                        'precision': precision,
+                        'recall': recall,
+                        'mAP': mAP[0][0]
+                        }
+
+                print("precision: ", precision)
+                print("recall: ", recall)
+                print("mAP: ", mAP[0][0])
+
+                self.experiment.log_metrics(metrics, step=epoch_num)
+
 
 if __name__ == '__main__':
-    main("./saved_models/split_dataset/makiya/pet2_model_499epochs.pth", 499)
+    main("./saved_models/split_dataset/makiya/pet3_model_199epochs.pth", 199)

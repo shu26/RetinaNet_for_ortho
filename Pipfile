@@ -19,6 +19,7 @@ torchvision = "==0.3.0"
 torch = "==1.1.0"
 comet-ml = "==2.0.5"
 sklearn = "*"
+random = "*"
 
 [requires]
 python_version = "3.5"

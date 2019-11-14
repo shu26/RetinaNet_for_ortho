@@ -1,7 +1,9 @@
 import os
 import sys
 import cv2
+import csv
 import copy
+import random
 import collections
 import numpy as np
 from comet_ml import Experiment
@@ -42,13 +44,15 @@ class Trainer:
         self.coco_path = './data'
 
         # Path to file containing training annotations (see readme)
-        self.csv_train ='./csv_data/split_dataset/makiya/annotations/pet_annotation.csv'
+        self.csv_train ='./csv_data/kudeken_makiya/annotations/pet_annotation.csv'
 
         # Path to file containing class list (see readme)
-        self.csv_classes = './csv_data/split_dataset/makiya/annotations/pet_class_id.csv'
+        self.csv_classes = './csv_data/kudeken_makiya/annotations/pet_class_id.csv'
 
         # Path to file containing validation annotations (optional, see readme)
-        self.csv_val = './csv_data/split_dataset/makiya/annotations/pet_annotation.csv'
+        self.csv_val = './csv_data/kudeken_makiya/annotations/pet_annotation.csv'
+
+        self.train_output_path = './csv_data/kudeken_makiya/annotations/train_annotation.csv'
 
         # Resnet depth, must be one of 18, 34, 50, 101, 152
         self.depth = 50
@@ -60,7 +64,10 @@ class Trainer:
         self.lr = 1e-4
 
         # Number of epochs
-        self.epochs = 200
+        self.epochs = 500
+
+        # training dataset ratio
+        self.train_ratio = 1.0
 
         # Number of save epochs
         #self.save_freq = 5
@@ -89,7 +96,9 @@ class Trainer:
         self.set_comet_ml()
 
         self.unnormalize = UnNormalizer()
-    
+   
+        self.train_image_names = []
+
     def set_comet_ml(self):
         params = {
         'epochs': self.epochs,
@@ -107,6 +116,80 @@ class Trainer:
         else:
             self.experiment = None
 
+    def remove_non_annot(self, samples):
+        new_samples = {}
+        new_samples_list = []
+        for sample in samples:
+            if samples[sample] != []:
+                new_dict = {sample: samples[sample]}
+                new_samples.update(new_dict)
+                new_samples_list.append(sample)
+        #print(new_samples)
+        return new_samples, new_samples_list
+    
+    def extract_samples(self, samples, samples_list, indices):
+        new_samples = {}
+        new_samples_list = []
+        for i, sample in enumerate(samples_list):
+            if i in indices:
+                new_samples_list.append(samples_list[i])
+        for sample in samples:
+            if sample in new_samples_list:
+                new_dict = {sample: samples[sample]}
+                new_samples.update(new_dict)
+                self.train_image_names.append(sample)
+        return new_samples
+
+    def write_splited_dataset(self, samples, output_path):
+        for sample in samples:
+            for annot in samples[sample]:
+                path = sample
+                x1 = annot["x1"]
+                y1 = annot["y1"]
+                x2 = annot["x2"]
+                y2 = annot["y2"]
+                label = annot["class"]
+                print(path,x1,x2,y1,y2,label)
+                with open(output_path,"a") as f:
+                    writer=csv.writer(f)
+                    writer.writerow([path,x1,y1,x2,y2,label])
+
+    def get_dataset(self):
+        dataset_train = CSVDataset(train_file=self.csv_train, class_list=self.csv_classes, transform=transforms.Compose([Normalizer(), Augmenter(), Resizer()]))
+        dataset_test = CSVDataset(train_file=self.csv_train, class_list=self.csv_classes, transform=transforms.Compose([Normalizer(), Augmenter(), Resizer()]))
+        train_samples = dataset_train.image_data
+        test_samples = dataset_test.image_data
+        
+        # if you remove non annotation images from dataset, you can use this 
+        train_samples, train_samples_list = self.remove_non_annot(train_samples)
+        test_samples, test_samples_list = self.remove_non_annot(test_samples)
+        
+        num_samples = len(train_samples)
+        indices = list(range(0, num_samples))
+
+        # split dataset into train and test dataset
+        num_train_samples = int(num_samples * self.train_ratio)
+        train_indices = random.sample(indices, num_train_samples)
+        test_indices = [i for i in indices if i not in train_indices]
+
+        # extract samples
+        train_samples = self.extract_samples(train_samples, train_samples_list, train_indices)
+        test_samples = self.extract_samples(test_samples, test_samples_list, test_indices)
+
+        self.write_splited_dataset(train_samples, self.train_output_path)
+
+        dataset_train.image_data = train_samples
+        dataset_test.image_data = test_samples
+        self.train_image_data = train_samples
+
+        print("----------------")
+        print(dataset_train.image_data)
+        print("================")
+        print(dataset_test.image_data)
+
+        return dataset_train, dataset_test
+
+
     def set_dataset(self):
         # Create the data loaders
         if self.dataset == 'coco':
@@ -120,9 +203,10 @@ class Trainer:
                 raise ValueError('Must provide --csv_train when training on COCO,')
             if self.csv_classes is None:
                 raise ValueError('Must provide --csv_classes when training on COCO,')
-            dataset_train = CSVDataset(train_file=self.csv_train, class_list=self.csv_classes, transform=transforms.Compose([Normalizer(), Augmenter(), Resizer()]))
-            print("dataset_train: ")
-            print(dataset_train)
+            
+            # split dataset
+            dataset_train, dataset_test = self.get_dataset()
+            
             if self.csv_val is None:
                 dataset_val = None
                 print('No validation annotations provided.')
@@ -132,7 +216,7 @@ class Trainer:
         else:
             raise ValueError('Dataset type not understood (must be csv or coco), exiting.')
 
-        return dataset_train, dataset_val
+        return dataset_train, dataset_test, dataset_val
 
 
     def set_models(self, dataset_train):
@@ -160,10 +244,14 @@ class Trainer:
     
     def iterate(self):
         print('GPU:{} is used'.format(self.device))
-        dataset_train, dataset_val = self.set_dataset()
+        dataset_train, dataset_test, dataset_val = self.set_dataset()
         sampler = AspectRatioBasedSampler(dataset_train, batch_size=self.bs, drop_last=False)
         dataloader_train = DataLoader(dataset_train, num_workers=0, collate_fn=collater, batch_sampler=sampler)
-
+        dataloader_train.dataset.image_data = self.train_image_data
+        dataloader_train.dataset.image_names = self.train_image_names
+        dataloader_train.dataset.train_file = self.train_output_path
+        print("dataloader_train", dataloader_train.dataset.__dict__)
+        
         print('Num training images: {}'.format(len(dataset_train)))
 
         self.set_models(dataset_train)
@@ -194,7 +282,7 @@ class Trainer:
 
             if (epoch_num+1) % 100 == 0:# or epoch_num == 10:
                 #self.evaluate(epoch_num, dataset_val)
-                model_path = os.path.join('./saved_models/split_dataset/makiya/', 'pet3_model_{}epochs.pth'.format(epoch_num))
+                model_path = os.path.join('./saved_models/kudeken_makiya/', 'pet3_model_{}epochs.pth'.format(epoch_num))
                 torch.save(self.retinanet.state_dict(), model_path)
                 #visualize(model_path, epoch_num)
 

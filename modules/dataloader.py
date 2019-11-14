@@ -153,6 +153,7 @@ class CSVDataset(Dataset):
         try:
             with self._open_for_csv(self.train_file) as file:
                 self.image_data = self._read_annotations(csv.reader(file, delimiter=','), self.classes)
+                #print("self.image_data", self.image_data)
         except ValueError as e:
             raise_from(ValueError('invalid CSV annotations file: {}: {}'.format(self.train_file, e)), None)
         self.image_names = list(self.image_data.keys())
@@ -203,7 +204,6 @@ class CSVDataset(Dataset):
         return len(self.image_names)
 
     def __getitem__(self, idx):
-
         img, file_path = self.load_image(idx)
         p_idx, position, div_num = self.get_img_position(file_path)
         annot = self.load_annotations(idx)
@@ -230,6 +230,8 @@ class CSVDataset(Dataset):
         return index, pos, div_num
 
     def load_image(self, image_index):
+        print(image_index)
+        print(self.image_names)
         file_path = self.image_names[image_index]
         img = skimage.io.imread(file_path)
 
