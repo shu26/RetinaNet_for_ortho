@@ -18,6 +18,7 @@ from modules.anchors import Anchors
 from modules.utils import BBoxTransform, ClipBoxes
 from modules.ortho_util import adjust_for_ortho, adjust_for_ortho_for_vis, adjust_for_ortho_for_test, adjust_for_ortho_for_vis_for_test, unite_images, unite_images_for_test
 from modules import losses
+from modules import csv_eval
 
 print('CUDA available: {}'.format(torch.cuda.is_available()))
 
@@ -25,11 +26,31 @@ print('CUDA available: {}'.format(torch.cuda.is_available()))
 #def main(args=None):
 def main(model_path, epoch_num):
     
+    def evaluate(epoch_num, dataset_val, retinanet, nms, device):
+        print('-------------------------------------')
+        if params["dataset"] == 'csv' and params["csv_val"] is not None:
+
+            print('Evaluating dataset csv')
+
+            recall, precision, mAP = csv_eval.evaluate(dataset_val, retinanet, nms, device)
+            metrics = {
+                    'precision': precision,
+                    'recall': recall,
+                    'mAP': mAP[0][0]
+                    }
+
+            print("precision: ", precision)
+            print("recall: ", recall)
+            print("mAP: ", mAP[0][0])
+
+            #self.experiment.log_metrics(metrics, step=epoch_num)
+
+
     params = {
             'dataset': 'csv',
             'coco_path': '',
             'csv_classes': './csv_data/split_dataset/makiya/annotations/pet_class_id.csv',
-            'csv_val': './csv_data/split_dataset/makiya/annotations/annotation.csv',
+            'csv_val': './csv_data/split_dataset/kudeken/annotations/same_as_komesu_annotation.csv',
             'model': model_path,
             'num_class': 1,
             'prediction': True,
@@ -59,6 +80,9 @@ def main(model_path, epoch_num):
     retinanet.eval()
     retinanet = retinanet.to(device)
     unnormalize = UnNormalizer()
+    #TODO:
+    evaluate(epoch_num, dataset_val, retinanet, nms, device)
+    sys.exit(0)
 
     def draw_caption(image, box, caption):
         b = np.array(box).astype(int)
@@ -248,25 +272,25 @@ def main(model_path, epoch_num):
             dataset_val = CSVDataset(train_file=params["csv_val"], class_list=paranms["csv_classes"], transform=transforms.Compose([Normalizer(), Resizer()]))
             return dataset_val
 
-        def evaluate(self, epoch_num, dataset_val):
-            print('-------------------------------------')
-            if self.dataset == 'csv' and self.csv_val is not None:
+    #def evaluate(epoch_num, dataset_val, retinanet, nms, device):
+    #    print('-------------------------------------')
+    #    if self.dataset == 'csv' and self.csv_val is not None:
 
-                print('Evaluating dataset csv')
+    #        print('Evaluating dataset csv')
 
-                recall, precision, mAP = csv_eval.evaluate(dataset_val, self.retinanet, self.nms, self.device)
-                metrics = {
-                        'precision': precision,
-                        'recall': recall,
-                        'mAP': mAP[0][0]
-                        }
+    #        recall, precision, mAP = csv_eval.evaluate(dataset_val, retinanet, nms, device)
+    #        metrics = {
+    #                'precision': precision,
+    #                'recall': recall,
+    #                'mAP': mAP[0][0]
+    #                }
 
-                print("precision: ", precision)
-                print("recall: ", recall)
-                print("mAP: ", mAP[0][0])
+    #        print("precision: ", precision)
+    #        print("recall: ", recall)
+    #        print("mAP: ", mAP[0][0])
 
-                self.experiment.log_metrics(metrics, step=epoch_num)
+    #        self.experiment.log_metrics(metrics, step=epoch_num)
 
 
 if __name__ == '__main__':
-    main("./saved_models/split_dataset/makiya/pet3_model_199epochs.pth", 199)
+    main("./saved_models/split_dataset/komesu/only_pet_model_199epochs.pth", 199)

@@ -44,15 +44,16 @@ class Trainer:
         self.coco_path = './data'
 
         # Path to file containing training annotations (see readme)
-        self.csv_train ='./csv_data/kudeken_makiya/annotations/pet_annotation.csv'
+        self.csv_train ='./csv_data/split_dataset/komesu/annotations/only_pet_annotation.csv'
 
         # Path to file containing class list (see readme)
         self.csv_classes = './csv_data/kudeken_makiya/annotations/pet_class_id.csv'
 
         # Path to file containing validation annotations (optional, see readme)
-        self.csv_val = './csv_data/kudeken_makiya/annotations/pet_annotation.csv'
+        self.csv_val = './csv_data/split_dataset/komesu/annotations/only_pet_annotation.csv'
 
-        self.train_output_path = './csv_data/kudeken_makiya/annotations/train_annotation.csv'
+        self.train_output_path = './csv_data/split_dataset/makiya/annotations/9_1/train4_annotation.csv'
+        self.test_output_path = './csv_data/split_dataset/makiya/annotations/9_1/test4_annotation.csv'
 
         # Resnet depth, must be one of 18, 34, 50, 101, 152
         self.depth = 50
@@ -64,10 +65,10 @@ class Trainer:
         self.lr = 1e-4
 
         # Number of epochs
-        self.epochs = 500
+        self.epochs = 200
 
         # training dataset ratio
-        self.train_ratio = 1.0
+        self.train_ratio = 0.9
 
         # Number of save epochs
         #self.save_freq = 5
@@ -120,7 +121,9 @@ class Trainer:
         new_samples = {}
         new_samples_list = []
         for sample in samples:
+            #TODO: if you do not remove non annotation images, you should comment out the below line
             if samples[sample] != []:
+
                 new_dict = {sample: samples[sample]}
                 new_samples.update(new_dict)
                 new_samples_list.append(sample)
@@ -142,6 +145,12 @@ class Trainer:
 
     def write_splited_dataset(self, samples, output_path):
         for sample in samples:
+            #TODO: if you do not remove non annotation images, you should use below
+            #if not samples[sample]:
+            #    with open(output_path,"a") as f:
+            #        writer=csv.writer(f)
+            #        writer.writerow([sample,None,None,None,None,None])
+
             for annot in samples[sample]:
                 path = sample
                 x1 = annot["x1"]
@@ -177,6 +186,7 @@ class Trainer:
         test_samples = self.extract_samples(test_samples, test_samples_list, test_indices)
 
         self.write_splited_dataset(train_samples, self.train_output_path)
+        self.write_splited_dataset(test_samples, self.test_output_path)
 
         dataset_train.image_data = train_samples
         dataset_test.image_data = test_samples
@@ -204,9 +214,13 @@ class Trainer:
             if self.csv_classes is None:
                 raise ValueError('Must provide --csv_classes when training on COCO,')
             
+            #TODO:
             # split dataset
-            dataset_train, dataset_test = self.get_dataset()
+            #dataset_train, dataset_test = self.get_dataset()
+            #sys.exit(0)
             
+            dataset_train = CSVDataset(train_file=self.csv_train, class_list=self.csv_classes, transform=transforms.Compose([Normalizer(), Augmenter(), Resizer()]))
+            dataset_test = CSVDataset(train_file=self.csv_train, class_list=self.csv_classes, transform=transforms.Compose([Normalizer(), Augmenter(), Resizer()]))
             if self.csv_val is None:
                 dataset_val = None
                 print('No validation annotations provided.')
@@ -247,10 +261,10 @@ class Trainer:
         dataset_train, dataset_test, dataset_val = self.set_dataset()
         sampler = AspectRatioBasedSampler(dataset_train, batch_size=self.bs, drop_last=False)
         dataloader_train = DataLoader(dataset_train, num_workers=0, collate_fn=collater, batch_sampler=sampler)
-        dataloader_train.dataset.image_data = self.train_image_data
-        dataloader_train.dataset.image_names = self.train_image_names
-        dataloader_train.dataset.train_file = self.train_output_path
-        print("dataloader_train", dataloader_train.dataset.__dict__)
+        #dataloader_train.dataset.image_data = self.train_image_data
+        #dataloader_train.dataset.image_names = self.train_image_names
+        #dataloader_train.dataset.train_file = self.train_output_path
+        #print("dataloader_train", dataloader_train.dataset.__dict__)
         
         print('Num training images: {}'.format(len(dataset_train)))
 
@@ -282,7 +296,7 @@ class Trainer:
 
             if (epoch_num+1) % 100 == 0:# or epoch_num == 10:
                 #self.evaluate(epoch_num, dataset_val)
-                model_path = os.path.join('./saved_models/kudeken_makiya/', 'pet3_model_{}epochs.pth'.format(epoch_num))
+                model_path = os.path.join('./saved_models/split_dataset/komesu', 'only_pet_model_{}epochs.pth'.format(epoch_num))
                 torch.save(self.retinanet.state_dict(), model_path)
                 #visualize(model_path, epoch_num)
 

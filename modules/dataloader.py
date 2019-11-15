@@ -230,8 +230,8 @@ class CSVDataset(Dataset):
         return index, pos, div_num
 
     def load_image(self, image_index):
-        print(image_index)
-        print(self.image_names)
+        #print(image_index)
+        #print(self.image_names)
         file_path = self.image_names[image_index]
         img = skimage.io.imread(file_path)
 
