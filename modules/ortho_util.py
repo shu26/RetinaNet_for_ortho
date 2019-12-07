@@ -93,7 +93,6 @@ def unite_images(images, idxs, positions, div_nums):
     div_num_y = div_nums[0][1]
 
     sorted_images = images.copy()
-
     for i in idxs:
         sorted_images[i] = images[idxs.index(i)]
 

@@ -45,7 +45,7 @@ class NMS:
         return scores, labels, boxes
 
 
-    def calcurate(self, boxes, scores, overlap=0.75, top_k=200):
+    def calcurate(self, boxes, scores, overlap=0.15, top_k=200):
         """Apply non-maximum suppression at test time to avoid detecting too many
         overlapping bounding boxes for a given object.
         Args:

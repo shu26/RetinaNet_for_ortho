@@ -11,7 +11,7 @@ import torch
 from torch.utils.data import Dataset, DataLoader
 from torchvision import datasets, models, transforms
 
-from modules.dataloader import CocoDataset, CSVDataset, collater, Resizer, AspectRatioBasedSampler, Augmenter, UnNormalizer, Normalizer
+from modules.dataloader import CocoDataset, CSVDataset, collater, Resizer, AspectRatioBasedSampler, Augmenter, UnNormalizer, Normalizer, Grayscale
 from model import resnet50
 from modules.nms_pytorch import NMS
 from modules.anchors import Anchors
@@ -50,7 +50,7 @@ def main(model_path, epoch_num):
             'dataset': 'csv',
             'coco_path': '',
             'csv_classes': './csv_data/split_dataset/makiya/annotations/pet_class_id.csv',
-            'csv_val': './csv_data/split_dataset/kudeken/annotations/same_as_komesu_annotation.csv',
+            'csv_val': './csv_data/split_dataset/kudeken/annotations/only_pet_annotation.csv',
             'model': model_path,
             'num_class': 1,
             'prediction': True,
@@ -68,7 +68,7 @@ def main(model_path, epoch_num):
     if params['dataset'] == 'coco':
         dataset_val = CocoDataset(params['coco_path'], set_name='val2017', transform=transforms.Compose([Normalizer(), Resizer()]))
     elif params['dataset'] == 'csv':
-        dataset_val = CSVDataset(train_file=params['csv_val'], class_list=params['csv_classes'], transform=transforms.Compose([Normalizer(), Resizer()]))
+        dataset_val = CSVDataset(train_file=params['csv_val'], class_list=params['csv_classes'], transform=transforms.Compose([Normalizer(), Grayscale(), Resizer()]))
     else:
         raise ValueError('Dataset type not understood (must be csv or coco), exiting.')
 
@@ -140,6 +140,8 @@ def main(model_path, epoch_num):
         # unite image parts
         global ortho_img
         if params['test'] == False:
+            print("images_list: ", len(images_list))
+            print("p_idxs: ", len(p_idxs))
             ortho_img = unite_images(images_list, p_idxs, positions, div_nums)
         else:
             ortho_img = unite_images_for_test(images_list, p_idxs, positions, div_nums)
@@ -196,11 +198,11 @@ def main(model_path, epoch_num):
                         label = row[5]
                         bbox = [x1, x2, y1, y2]
                         if label == "tree":
-                            label = 0
-                        elif label == "rope":
                             label = 1
-                        elif label == "plasticbottle":
+                        elif label == "rope":
                             label = 2
+                        elif label == "plasticbottle":
+                            label = 0
                         elif label == "net":
                             labee = 3
                         elif label == "spraycan":
@@ -254,15 +256,16 @@ def main(model_path, epoch_num):
                 cv2.rectangle(ortho_img, (x1, y1), (x2, y2), color=(100, 0, 100), thickness=2)
             if label_name == "buoy":
                 cv2.rectangle(ortho_img, (x1, y1), (x2, y2), color=(50, 100, 200), thickness=2)
-        dataset_val = set_dataset()
-        evaluate(epoch_num, dataset_val)
+        #dataset_val = set_dataset()
+        #evaluate(epoch_num, dataset_val)
 
         print("Now saving...")
         global ortho_img
         if params["test"] == True:
             # clip original size from ortho_img made in RetinaNet
             ortho_img = ortho_img[0:9704,0:11522] 
-        cv2.imwrite('./visualized_images/split_dataset/makiya/pet2_vis_{}epochs.png'.format(epoch_num), ortho_img)
+        ortho_img = ortho_img[0:7298,0:10938] 
+        cv2.imwrite('./visualized_images/split_dataset/kudeken/graysacle_vis_{}epochs.png'.format(epoch_num), ortho_img)
         #cv2.imwrite('./visualized_images/vis_test_1016.png', ortho_img)
         print("Finish saving")
         #cv2.waitKey(0)
@@ -293,4 +296,4 @@ def main(model_path, epoch_num):
 
 
 if __name__ == '__main__':
-    main("./saved_models/split_dataset/komesu/only_pet_model_199epochs.pth", 199)
+    main("./saved_models/split_dataset/makiya/grayscale_gamma_model_199epochs.pth", 200)

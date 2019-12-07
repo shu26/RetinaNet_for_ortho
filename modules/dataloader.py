@@ -15,6 +15,7 @@ from pycocotools.coco import COCO
 import skimage.io
 import skimage.transform
 import skimage.color
+import skimage.exposure
 import skimage
 
 from PIL import Image
@@ -234,7 +235,7 @@ class CSVDataset(Dataset):
         #print(self.image_names)
         file_path = self.image_names[image_index]
         img = skimage.io.imread(file_path)
-
+        
         if len(img.shape) == 2:
             img = skimage.color.gray2rgb(img)
 
@@ -289,8 +290,8 @@ class CSVDataset(Dataset):
                 result[img_file] = []
 
             # If a row contains only an image path, it's an image without annotations.
-            if not class_name == 'plasticbottle':
-                x1, y1, x2, y2, class_name = '', '', '', '', ''
+            #if not class_name == 'plasticbottle':
+            #    x1, y1, x2, y2, class_name = '', '', '', '', ''
 
             if (x1, y1, x2, y2, class_name) == ('', '', '', '', ''):
                 continue
@@ -344,7 +345,10 @@ def collater(data):
     max_width = np.array(widths).max()
     max_height = np.array(heights).max()
 
-    padded_imgs = torch.zeros(batch_size, max_width, max_height, 3)
+    #padded_imgs = torch.zeros(batch_size, max_width, max_height, 3)
+    
+    # Use below when you adjust the model for grayscale
+    padded_imgs = torch.zeros(batch_size, max_width, max_height, 1)
 
     for i in range(batch_size):
         img = imgs[i]
@@ -358,17 +362,27 @@ def collater(data):
 
         if max_num_annots > 0:
             for idx, annot in enumerate(annots):
-                #print(annot.shape)
                 if annot.shape[0] > 0:
                     annot_padded[idx, :annot.shape[0], :] = annot
     else:
         annot_padded = torch.ones((len(annots), 1, 5)) * -1
 
-
     padded_imgs = padded_imgs.permute(0, 3, 1, 2)
 
     return {'img': padded_imgs, 'annot': annot_padded, 'scale': scales, 
             'p_idx': p_idxs, 'position': positions, 'div_num': div_nums}
+
+class Grayscale(object):
+    """Convert RGB images to Grayscale images."""
+
+    def __call__(self, sample):
+        image = skimage.color.rgb2gray(sample['img'])
+        imgL = skimage.exposure.adjust_gamma(image, 2.2)  # pow(img, 2.2)
+        img_grayL = rgb2gray(imgL)
+        image = exposure.adjust_gamma(img_grayL, 1.0/2.2)
+        image = image[:,:,np.newaxis]
+        
+        return {'img': image, 'annot': sample['annot']}
 
 class Resizer(object):
     """Convert ndarrays in sample to Tensors."""
@@ -376,6 +390,7 @@ class Resizer(object):
     def __call__(self, sample, min_side=600, max_side=1024):   # 604, 1024
         image, annots = sample['img'], sample['annot']
         
+        #rows, cols = image.shape
         rows, cols, cns = image.shape
 
         smallest_side = min(rows, cols)
@@ -390,12 +405,8 @@ class Resizer(object):
         if largest_side * scale > max_side:
             scale = max_side / largest_side
             
-            
         # set scale=1 to match the size of output to input
         scale = 1
-
-
-        
 
         # resize the image with the computed scale
         image = skimage.transform.resize(image, (int(round(rows*scale)), int(round((cols*scale)))))
@@ -439,13 +450,16 @@ class Augmenter(object):
 class Normalizer(object):
 
     def __init__(self):
-        self.mean = np.array([[[0.485, 0.456, 0.406]]])
-        self.std = np.array([[[0.229, 0.224, 0.225]]])
+        #self.mean = np.array([[[0.485, 0.456, 0.406]]])
+        #self.std = np.array([[[0.229, 0.224, 0.225]]])
+        
+        # Use below when you adjust the model for grayscale
+        self.mean = np.array([[[0.485]]])
+        self.std = np.array([[[0.229]]])
 
     def __call__(self, sample):
 
         image, annots = sample['img'], sample['annot']
-
         return {'img':((image.astype(np.float32)-self.mean)/self.std), 'annot': annots}
 
 class UnNormalizer(object):
@@ -466,6 +480,7 @@ class UnNormalizer(object):
         Returns:
             Tensor: Normalized image.
         """
+        #print("111111111")
         for t, m, s in zip(tensor, self.mean, self.std):
             t.mul_(s).add_(m)
         return tensor

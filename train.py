@@ -19,7 +19,7 @@ from torchvision import datasets, models, transforms
 
 from modules.anchors import Anchors
 from modules import losses
-from modules.dataloader import CocoDataset, CSVDataset, collater, Resizer, AspectRatioBasedSampler, Augmenter, UnNormalizer, Normalizer
+from modules.dataloader import CocoDataset, CSVDataset, collater, Resizer, AspectRatioBasedSampler, Augmenter, UnNormalizer, Normalizer, Grayscale
 from modules import coco_eval
 from modules import csv_eval
 from modules.nms_pytorch import NMS
@@ -44,16 +44,16 @@ class Trainer:
         self.coco_path = './data'
 
         # Path to file containing training annotations (see readme)
-        self.csv_train ='./csv_data/split_dataset/komesu/annotations/only_pet_annotation.csv'
+        self.csv_train ='./csv_data/split_dataset/makiya/annotations/pet_annotation.csv'
 
         # Path to file containing class list (see readme)
-        self.csv_classes = './csv_data/kudeken_makiya/annotations/pet_class_id.csv'
+        self.csv_classes = './csv_data/split_dataset/makiya/annotations/pet_class_id.csv'
 
         # Path to file containing validation annotations (optional, see readme)
-        self.csv_val = './csv_data/split_dataset/komesu/annotations/only_pet_annotation.csv'
+        self.csv_val = './csv_data/split_dataset/makiya/annotations/pet_annotation.csv'
 
-        self.train_output_path = './csv_data/split_dataset/makiya/annotations/9_1/train4_annotation.csv'
-        self.test_output_path = './csv_data/split_dataset/makiya/annotations/9_1/test4_annotation.csv'
+        self.train_output_path = './csv_data/split_dataset/makiya/annotations/9_1_pet_tree_rope/train0_annotation.csv'
+        self.test_output_path = './csv_data/split_dataset/makiya/annotations/9_1_pet_tree_rope/test0_annotation.csv'
 
         # Resnet depth, must be one of 18, 34, 50, 101, 152
         self.depth = 50
@@ -164,8 +164,8 @@ class Trainer:
                     writer.writerow([path,x1,y1,x2,y2,label])
 
     def get_dataset(self):
-        dataset_train = CSVDataset(train_file=self.csv_train, class_list=self.csv_classes, transform=transforms.Compose([Normalizer(), Augmenter(), Resizer()]))
-        dataset_test = CSVDataset(train_file=self.csv_train, class_list=self.csv_classes, transform=transforms.Compose([Normalizer(), Augmenter(), Resizer()]))
+        dataset_train = CSVDataset(train_file=self.csv_train, class_list=self.csv_classes, transform=transforms.Compose([Grayscale(), Normalizer(), Augmenter(), Resizer()]))
+        dataset_test = CSVDataset(train_file=self.csv_train, class_list=self.csv_classes, transform=transforms.Compose([Grayscale(), Normalizer(), Augmenter(), Resizer()]))
         train_samples = dataset_train.image_data
         test_samples = dataset_test.image_data
         
@@ -216,16 +216,16 @@ class Trainer:
             
             #TODO:
             # split dataset
-            #dataset_train, dataset_test = self.get_dataset()
-            #sys.exit(0)
+#            dataset_train, dataset_test = self.get_dataset()
+#            sys.exit(0)
             
-            dataset_train = CSVDataset(train_file=self.csv_train, class_list=self.csv_classes, transform=transforms.Compose([Normalizer(), Augmenter(), Resizer()]))
-            dataset_test = CSVDataset(train_file=self.csv_train, class_list=self.csv_classes, transform=transforms.Compose([Normalizer(), Augmenter(), Resizer()]))
+            dataset_train = CSVDataset(train_file=self.csv_train, class_list=self.csv_classes, transform=transforms.Compose([Grayscale(), Normalizer(), Augmenter(), Resizer()]))
+            dataset_test = CSVDataset(train_file=self.csv_train, class_list=self.csv_classes, transform=transforms.Compose([Grayscale(), Normalizer(), Augmenter(), Resizer()]))
             if self.csv_val is None:
                 dataset_val = None
                 print('No validation annotations provided.')
             else:
-                dataset_val = CSVDataset(train_file=self.csv_val, class_list=self.csv_classes, transform=transforms.Compose([Normalizer(), Resizer()]))
+                dataset_val = CSVDataset(train_file=self.csv_val, class_list=self.csv_classes, transform=transforms.Compose([Normalizer(), Grayscale(), Resizer()]))
 
         else:
             raise ValueError('Dataset type not understood (must be csv or coco), exiting.')
@@ -296,7 +296,7 @@ class Trainer:
 
             if (epoch_num+1) % 100 == 0:# or epoch_num == 10:
                 #self.evaluate(epoch_num, dataset_val)
-                model_path = os.path.join('./saved_models/split_dataset/komesu', 'only_pet_model_{}epochs.pth'.format(epoch_num))
+                model_path = os.path.join('./saved_models/split_dataset/makiya/', 'grayscale_gamma_model_{}epochs.pth'.format(epoch_num))
                 torch.save(self.retinanet.state_dict(), model_path)
                 #visualize(model_path, epoch_num)
 
@@ -315,7 +315,7 @@ class Trainer:
                 self.optimizer.zero_grad()
                 input = data['img'].to(self.device).float()
                 annot = data['annot'].to(self.device)
-
+                
                 # unnormalization
                 img = np.array(255 * self.unnormalize(data['img'][0, :, :, :])).copy()
                 img = img[:,:600,:600]
@@ -323,18 +323,17 @@ class Trainer:
                 img[img>255] = 255
                 img = np.transpose(img, (1, 2, 0))
                 img = cv2.cvtColor(img.astype(np.uint8), cv2.COLOR_BGR2RGB)
-
                 img1d = np.sum(img, axis=-1) # sum rgb values -> 0 means that the color is black
                 imgblack = np.where(img1d==0, 1, 0)
                 black_count = np.sum(imgblack)  # calcurate the number of the black image
                 ratio = black_count / (img1d.shape[0] * img1d.shape[1])
-
+                
                 # When about 80% of the image is dark, do not process it
                 if ratio >= 0.8:
                     continue
-
+                #print("kkkkkkkkk")
                 regression, classification, anchors = self.retinanet(input)
-                
+                #print("zzzzzzzzz")
                 classification_loss, regression_loss = self.focal_loss.calcurate(classification, regression, anchors, annot)
                 
                 classification_loss = classification_loss.mean()
