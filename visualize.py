@@ -80,7 +80,7 @@ def main(model_path, epoch_num):
     retinanet.eval()
     retinanet = retinanet.to(device)
     unnormalize = UnNormalizer()
-    #TODO:
+    #TODO: if you only evaluate the test dataset, please use below
     evaluate(epoch_num, dataset_val, retinanet, nms, device)
     sys.exit(0)
 

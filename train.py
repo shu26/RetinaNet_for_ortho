@@ -117,6 +117,7 @@ class Trainer:
         else:
             self.experiment = None
 
+    # Remove non annotation images during training
     def remove_non_annot(self, samples):
         new_samples = {}
         new_samples_list = []
@@ -127,7 +128,6 @@ class Trainer:
                 new_dict = {sample: samples[sample]}
                 new_samples.update(new_dict)
                 new_samples_list.append(sample)
-        #print(new_samples)
         return new_samples, new_samples_list
     
     def extract_samples(self, samples, samples_list, indices):
@@ -143,6 +143,7 @@ class Trainer:
                 self.train_image_names.append(sample)
         return new_samples
 
+    # Make a new csv file splited into training dataset and test dataset
     def write_splited_dataset(self, samples, output_path):
         for sample in samples:
             #TODO: if you do not remove non annotation images, you should use below
@@ -331,9 +332,7 @@ class Trainer:
                 # When about 80% of the image is dark, do not process it
                 if ratio >= 0.8:
                     continue
-                #print("kkkkkkkkk")
                 regression, classification, anchors = self.retinanet(input)
-                #print("zzzzzzzzz")
                 classification_loss, regression_loss = self.focal_loss.calcurate(classification, regression, anchors, annot)
                 
                 classification_loss = classification_loss.mean()
