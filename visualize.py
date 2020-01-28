@@ -270,30 +270,9 @@ def main(model_path, epoch_num):
         print("Finish saving")
         #cv2.waitKey(0)
 
-
         def set_dataset():
             dataset_val = CSVDataset(train_file=params["csv_val"], class_list=paranms["csv_classes"], transform=transforms.Compose([Normalizer(), Resizer()]))
             return dataset_val
-
-    #def evaluate(epoch_num, dataset_val, retinanet, nms, device):
-    #    print('-------------------------------------')
-    #    if self.dataset == 'csv' and self.csv_val is not None:
-
-    #        print('Evaluating dataset csv')
-
-    #        recall, precision, mAP = csv_eval.evaluate(dataset_val, retinanet, nms, device)
-    #        metrics = {
-    #                'precision': precision,
-    #                'recall': recall,
-    #                'mAP': mAP[0][0]
-    #                }
-
-    #        print("precision: ", precision)
-    #        print("recall: ", recall)
-    #        print("mAP: ", mAP[0][0])
-
-    #        self.experiment.log_metrics(metrics, step=epoch_num)
-
 
 if __name__ == '__main__':
     main("./saved_models/split_dataset/makiya/grayscale_gamma_model_199epochs.pth", 200)

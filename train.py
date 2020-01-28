@@ -52,9 +52,12 @@ class Trainer:
         # Path to file containing validation annotations (optional, see readme)
         self.csv_val = './csv_data/split_dataset/makiya/annotations/pet_annotation.csv'
 
-        self.train_output_path = './csv_data/split_dataset/makiya/annotations/9_1_pet_tree_rope/train0_annotation.csv'
-        self.test_output_path = './csv_data/split_dataset/makiya/annotations/9_1_pet_tree_rope/test0_annotation.csv'
+        self.splited_train_path = './csv_data/split_dataset/makiya/annotations/9_1_pet_tree_rope/train0_annotation.csv'
+        self.splited_test_path = './csv_data/split_dataset/makiya/annotations/9_1_pet_tree_rope/test0_annotation.csv'
 
+        # If you use grayscale image, this valuable is true
+        self.is_gray = False
+        
         # Resnet depth, must be one of 18, 34, 50, 101, 152
         self.depth = 50
 
@@ -124,7 +127,6 @@ class Trainer:
         for sample in samples:
             #TODO: if you do not remove non annotation images, you should comment out the below line
             if samples[sample] != []:
-
                 new_dict = {sample: samples[sample]}
                 new_samples.update(new_dict)
                 new_samples_list.append(sample)
@@ -164,9 +166,13 @@ class Trainer:
                     writer=csv.writer(f)
                     writer.writerow([path,x1,y1,x2,y2,label])
 
-    def get_dataset(self):
-        dataset_train = CSVDataset(train_file=self.csv_train, class_list=self.csv_classes, transform=transforms.Compose([Grayscale(), Normalizer(), Augmenter(), Resizer()]))
-        dataset_test = CSVDataset(train_file=self.csv_train, class_list=self.csv_classes, transform=transforms.Compose([Grayscale(), Normalizer(), Augmenter(), Resizer()]))
+    def get_splited_dataset(self):
+        use_grayscale_dataset = CSVDataset(train_file=self.csv_train, class_list=self.csv_classes, transform=transforms.Compose([Grayscale(), Normalizer(), Augmenter(), Resizer()]))
+        use_rgb_dataset = CSVDataset(train_file=self.csv_train, class_list=self.csv_classes, transform=transforms.Compose([Normalizer(), Augmenter(), Resizer()]))
+        dataset_train = use_grayscale_dataset if is_gray else use_rgb_dataset
+        dataset_test = dataset_train
+
+        # get image data from each dataset
         train_samples = dataset_train.image_data
         test_samples = dataset_test.image_data
         
@@ -186,17 +192,12 @@ class Trainer:
         train_samples = self.extract_samples(train_samples, train_samples_list, train_indices)
         test_samples = self.extract_samples(test_samples, test_samples_list, test_indices)
 
-        self.write_splited_dataset(train_samples, self.train_output_path)
-        self.write_splited_dataset(test_samples, self.test_output_path)
+        self.write_splited_dataset(train_samples, self.splited_train_path)
+        self.write_splited_dataset(test_samples, self.splited_test_path)
 
         dataset_train.image_data = train_samples
         dataset_test.image_data = test_samples
         self.train_image_data = train_samples
-
-        print("----------------")
-        print(dataset_train.image_data)
-        print("================")
-        print(dataset_test.image_data)
 
         return dataset_train, dataset_test
 
@@ -216,12 +217,13 @@ class Trainer:
                 raise ValueError('Must provide --csv_classes when training on COCO,')
             
             #TODO:
-            # split dataset
-#            dataset_train, dataset_test = self.get_dataset()
-#            sys.exit(0)
+            # If you want to split the dataset for train and test, you use below
+            dataset_train, dataset_test = self.get_splited_dataset()
+            sys.exit(0)
+
+            dataset_train = CSVDataset(train_file=self.csv_train, class_list=self.csv_classes, transform=transforms.Compose([Grayscale(), Normalizer(), Augmenter(), Resizer()])) if is_gray else CSVDataset(train_file=self.csv_train, class_list=self.csv_classes, transform=transforms.Compose([Normalizer(), Augmenter(), Resizer()]))
+            dataset_test = dataset_train
             
-            dataset_train = CSVDataset(train_file=self.csv_train, class_list=self.csv_classes, transform=transforms.Compose([Grayscale(), Normalizer(), Augmenter(), Resizer()]))
-            dataset_test = CSVDataset(train_file=self.csv_train, class_list=self.csv_classes, transform=transforms.Compose([Grayscale(), Normalizer(), Augmenter(), Resizer()]))
             if self.csv_val is None:
                 dataset_val = None
                 print('No validation annotations provided.')
@@ -262,10 +264,6 @@ class Trainer:
         dataset_train, dataset_test, dataset_val = self.set_dataset()
         sampler = AspectRatioBasedSampler(dataset_train, batch_size=self.bs, drop_last=False)
         dataloader_train = DataLoader(dataset_train, num_workers=0, collate_fn=collater, batch_sampler=sampler)
-        #dataloader_train.dataset.image_data = self.train_image_data
-        #dataloader_train.dataset.image_names = self.train_image_names
-        #dataloader_train.dataset.train_file = self.train_output_path
-        #print("dataloader_train", dataloader_train.dataset.__dict__)
         
         print('Num training images: {}'.format(len(dataset_train)))
 
@@ -286,10 +284,8 @@ class Trainer:
             self.retinanet.freeze_bn()
             epoch_loss = self.train(epoch_num, epoch_loss, dataloader_train)
             self.retinanet.eval()
-            # 評価
-            #self.evaluate(epoch_num, dataset_val)
 
-            # save the model & visualize the image
+            # evaluate the model, save the model & visualize the image
             self.scheduler.step(np.mean(epoch_loss))	
             self.retinanet.eval()
             if (epoch_num+1) % 5 == 0:
@@ -304,9 +300,6 @@ class Trainer:
             if (epoch_num+1) % 10000 == 0:
                 visualize(model_path, epoch_num)
                 #self.experiment.log_image(image_data=vis_img)
-
-
-        #torch.save(self.retinanet.state_dict(), './saved_models/model_anchi_0522_1000epochs_pet.pth')
 
 
     def train(self, epoch_num, epoch_loss, dataloader_train):
@@ -356,9 +349,6 @@ class Trainer:
                 print(e)
                 continue
 
-            # if iter_num == 10:
-            #     break
-
         return epoch_loss
 
 
@@ -367,15 +357,12 @@ class Trainer:
         if self.dataset == 'coco':
 
             print('Evaluating dataset coco')
-
             coco_eval.evaluate_coco(dataset_val, self.retinanet, self.nms, self.device)
 
         elif self.dataset == 'csv' and self.csv_val is not None:
 
             print('Evaluating dataset csv')
-            
             recall, precision, mAP = csv_eval.evaluate(dataset_val, self.retinanet, self.nms, self.device)
-
             metrics = {
                     'precision': precision,
                     'recall': recall,
