@@ -126,10 +126,10 @@ class Trainer:
         new_samples_list = []
         for sample in samples:
             #TODO: if you do not remove non annotation images, you should comment out the below line
-            #if samples[sample] != []:
-            #    new_dict = {sample: samples[sample]}
-            #    new_samples.update(new_dict)
-            #    new_samples_list.append(sample)
+            if samples[sample] != []:
+                new_dict = {sample: samples[sample]}
+                new_samples.update(new_dict)
+                new_samples_list.append(sample)
         return new_samples, new_samples_list
     
     def extract_samples(self, samples, samples_list, indices):
