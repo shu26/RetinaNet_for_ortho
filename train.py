@@ -228,7 +228,7 @@ class Trainer:
                 dataset_val = None
                 print('No validation annotations provided.')
             else:
-                dataset_val = CSVDataset(train_file=self.csv_val, class_list=self.csv_classes, transform=transforms.Compose([Normalizer(), Grayscale(), Resizer()]))
+                dataset_val = CSVDataset(train_file=self.csv_val, class_list=self.csv_classes, transform=transforms.Compose([Normalizer(), Grayscale(), Resizer()])) if self.is_gray else CSVDataset(train_file=self.csv_train, class_list=self.csv_classes, transform=transforms.Compose([Normalizer(), Resizer()]))
 
         else:
             raise ValueError('Dataset type not understood (must be csv or coco), exiting.')
@@ -293,7 +293,7 @@ class Trainer:
 
             if (epoch_num+1) % 100 == 0:# or epoch_num == 10:
                 #self.evaluate(epoch_num, dataset_val)
-                model_path = os.path.join('./saved_models/split_dataset/makiya/', 'grayscale_gamma_model_{}epochs.pth'.format(epoch_num))
+                model_path = os.path.join('./saved_models/split_dataset/makiya/', 'tree_model_{}epochs.pth'.format(epoch_num))
                 torch.save(self.retinanet.state_dict(), model_path)
                 #visualize(model_path, epoch_num)
 
