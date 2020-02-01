@@ -345,10 +345,10 @@ def collater(data):
     max_width = np.array(widths).max()
     max_height = np.array(heights).max()
 
-    #padded_imgs = torch.zeros(batch_size, max_width, max_height, 3)
+    padded_imgs = torch.zeros(batch_size, max_width, max_height, 3)
     
     # Use below when you adjust the model for grayscale
-    padded_imgs = torch.zeros(batch_size, max_width, max_height, 1)
+    #padded_imgs = torch.zeros(batch_size, max_width, max_height, 1)
 
     for i in range(batch_size):
         img = imgs[i]
@@ -450,12 +450,12 @@ class Augmenter(object):
 class Normalizer(object):
 
     def __init__(self):
-        #self.mean = np.array([[[0.485, 0.456, 0.406]]])
-        #self.std = np.array([[[0.229, 0.224, 0.225]]])
+        self.mean = np.array([[[0.485, 0.456, 0.406]]])
+        self.std = np.array([[[0.229, 0.224, 0.225]]])
         
         # Use below when you adjust the model for grayscale
-        self.mean = np.array([[[0.485]]])
-        self.std = np.array([[[0.229]]])
+        #self.mean = np.array([[[0.485]]])
+        #self.std = np.array([[[0.229]]])
 
     def __call__(self, sample):
 
