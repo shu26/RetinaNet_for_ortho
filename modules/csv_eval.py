@@ -161,7 +161,7 @@ def evaluate(
     device,
     iou_threshold=0.15,
     score_threshold=0.9,
-    max_detections=13,
+    max_detections=8,
     save_path=None
 ):
     """ Evaluate a given dataset using a given retinanet.
