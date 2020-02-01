@@ -44,13 +44,13 @@ class Trainer:
         self.coco_path = './data'
 
         # Path to file containing training annotations (see readme)
-        self.csv_train ='./csv_data/split_dataset/makiya/annotations/pet_annotation.csv'
+        self.csv_train ='./csv_data/split_dataset/makiya/annotations/tree_annotation.csv'
 
         # Path to file containing class list (see readme)
-        self.csv_classes = './csv_data/split_dataset/makiya/annotations/pet_class_id.csv'
+        self.csv_classes = './csv_data/split_dataset/makiya/annotations/tree_class_id.csv'
 
         # Path to file containing validation annotations (optional, see readme)
-        self.csv_val = './csv_data/split_dataset/makiya/annotations/pet_annotation.csv'
+        self.csv_val = './csv_data/split_dataset/makiya/annotations/tree_annotation.csv'
 
         self.splited_train_path = './csv_data/split_dataset/makiya/annotations/9_1_pet_tree_rope/train0_annotation.csv'
         self.splited_test_path = './csv_data/split_dataset/makiya/annotations/9_1_pet_tree_rope/test0_annotation.csv'
@@ -126,10 +126,10 @@ class Trainer:
         new_samples_list = []
         for sample in samples:
             #TODO: if you do not remove non annotation images, you should comment out the below line
-            if samples[sample] != []:
-                new_dict = {sample: samples[sample]}
-                new_samples.update(new_dict)
-                new_samples_list.append(sample)
+            #if samples[sample] != []:
+            #    new_dict = {sample: samples[sample]}
+            #    new_samples.update(new_dict)
+            #    new_samples_list.append(sample)
         return new_samples, new_samples_list
     
     def extract_samples(self, samples, samples_list, indices):
@@ -149,10 +149,10 @@ class Trainer:
     def write_splited_dataset(self, samples, output_path):
         for sample in samples:
             #TODO: if you do not remove non annotation images, you should use below
-            #if not samples[sample]:
-            #    with open(output_path,"a") as f:
-            #        writer=csv.writer(f)
-            #        writer.writerow([sample,None,None,None,None,None])
+            if not samples[sample]:
+                with open(output_path,"a") as f:
+                    writer=csv.writer(f)
+                    writer.writerow([sample,None,None,None,None,None])
 
             for annot in samples[sample]:
                 path = sample
@@ -218,8 +218,8 @@ class Trainer:
             
             #TODO:
             # If you want to split the dataset for train and test, you use below
-            dataset_train, dataset_test = self.get_splited_dataset()
-            sys.exit(0)
+            #dataset_train, dataset_test = self.get_splited_dataset()
+            #sys.exit(0)
 
             dataset_train = CSVDataset(train_file=self.csv_train, class_list=self.csv_classes, transform=transforms.Compose([Grayscale(), Normalizer(), Augmenter(), Resizer()])) if is_gray else CSVDataset(train_file=self.csv_train, class_list=self.csv_classes, transform=transforms.Compose([Normalizer(), Augmenter(), Resizer()]))
             dataset_test = dataset_train
