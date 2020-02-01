@@ -169,7 +169,7 @@ class Trainer:
     def get_splited_dataset(self):
         use_grayscale_dataset = CSVDataset(train_file=self.csv_train, class_list=self.csv_classes, transform=transforms.Compose([Grayscale(), Normalizer(), Augmenter(), Resizer()]))
         use_rgb_dataset = CSVDataset(train_file=self.csv_train, class_list=self.csv_classes, transform=transforms.Compose([Normalizer(), Augmenter(), Resizer()]))
-        dataset_train = use_grayscale_dataset if is_gray else use_rgb_dataset
+        dataset_train = use_grayscale_dataset if self.is_gray else use_rgb_dataset
         dataset_test = dataset_train
 
         # get image data from each dataset
@@ -221,7 +221,7 @@ class Trainer:
             #dataset_train, dataset_test = self.get_splited_dataset()
             #sys.exit(0)
 
-            dataset_train = CSVDataset(train_file=self.csv_train, class_list=self.csv_classes, transform=transforms.Compose([Grayscale(), Normalizer(), Augmenter(), Resizer()])) if is_gray else CSVDataset(train_file=self.csv_train, class_list=self.csv_classes, transform=transforms.Compose([Normalizer(), Augmenter(), Resizer()]))
+            dataset_train = CSVDataset(train_file=self.csv_train, class_list=self.csv_classes, transform=transforms.Compose([Grayscale(), Normalizer(), Augmenter(), Resizer()])) if self.is_gray else CSVDataset(train_file=self.csv_train, class_list=self.csv_classes, transform=transforms.Compose([Normalizer(), Augmenter(), Resizer()]))
             dataset_test = dataset_train
             
             if self.csv_val is None:
