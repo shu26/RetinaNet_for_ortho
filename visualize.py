@@ -6,6 +6,7 @@ import copy
 import sys
 import cv2
 import csv
+import time
 
 import torch
 from torch.utils.data import Dataset, DataLoader
@@ -25,6 +26,8 @@ print('CUDA available: {}'.format(torch.cuda.is_available()))
 
 #def main(args=None):
 def main(model_path, epoch_num):
+
+    start = time.time()
     
     def evaluate(epoch_num, dataset_val, retinanet, nms, device):
         print('-------------------------------------')
@@ -49,12 +52,12 @@ def main(model_path, epoch_num):
     params = {
             'dataset': 'csv',
             'coco_path': '',
-            'csv_classes': './csv_data/split_dataset/makiya/annotations/pet_class_id.csv',
-            'csv_val': './csv_data/split_dataset/kudeken/annotations/only_pet_annotation.csv',
+            'csv_classes': './csv_data/split_dataset/makiya/annotations/tree_class_id.csv',
+            'csv_val': './csv_data/split_dataset/kudeken/annotations/tree_annotation.csv',
             'model': model_path,
             'num_class': 1,
             'prediction': True,
-            'test': False,
+            'test': False,  # if you use the test dataset (splited with overlap), please set True
             }
     device = torch.device('cuda:1' if torch.cuda.is_available() else 'cpu')
 
@@ -76,12 +79,15 @@ def main(model_path, epoch_num):
     dataloader_val = DataLoader(dataset_val, num_workers=1, collate_fn=collater, batch_sampler=sampler_val)
     nms = NMS(BBoxTransform, ClipBoxes)
     retinanet = resnet50(num_classes=params['num_class'], pretrained=True)
+    retinanet = retinanet.cpu()
     retinanet.load_state_dict(torch.load(params['model']), strict=False)
     retinanet.eval()
     retinanet = retinanet.to(device)
     unnormalize = UnNormalizer()
     #TODO: if you only evaluate the test dataset, please use below
     evaluate(epoch_num, dataset_val, retinanet, nms, device)
+    elapsed_time = time.time() - start
+    print("elapsed_time:{0}".format(elapsed_time) + "[sec]")
     sys.exit(0)
 
     def draw_caption(image, box, caption):

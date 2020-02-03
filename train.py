@@ -293,7 +293,7 @@ class Trainer:
 
             if (epoch_num+1) % 100 == 0:# or epoch_num == 10:
                 #self.evaluate(epoch_num, dataset_val)
-                model_path = os.path.join('./saved_models/split_dataset/makiya/', 'tree_model_{}epochs.pth'.format(epoch_num))
+                model_path = os.path.join('./saved_models/split_dataset/makiya/', 'tree_model2_{}epochs.pth'.format(epoch_num))
                 torch.save(self.retinanet.state_dict(), model_path)
                 #visualize(model_path, epoch_num)
 
