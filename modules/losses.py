@@ -38,7 +38,7 @@ class FocalLoss(nn.Module):
         anchor_ctr_x   = anchor[:, 0] + 0.5 * anchor_widths
         anchor_ctr_y   = anchor[:, 1] + 0.5 * anchor_heights
 
-        device = torch.device('cuda:1' if torch.cuda.is_available() else 'cpu')
+        device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
         for j in range(batch_size):
 

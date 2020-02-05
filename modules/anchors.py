@@ -20,7 +20,7 @@ class Anchors(nn.Module):
 
     def forward(self, image):
 
-        device = torch.device('cuda:1' if torch.cuda.is_available() else 'cpu')
+        device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
         
         image_shape = image.shape[2:]
         image_shape = np.array(image_shape)

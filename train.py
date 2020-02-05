@@ -56,7 +56,7 @@ class Trainer:
         self.splited_test_path = './csv_data/split_dataset/makiya/annotations/9_1_pet_tree_rope/test0_annotation.csv'
 
         # If you use grayscale image, this valuable is true
-        self.is_gray = False
+        self.is_gray = True
         
         # Resnet depth, must be one of 18, 34, 50, 101, 152
         self.depth = 50
@@ -243,7 +243,7 @@ class Trainer:
         elif self.depth == 34:
             retinanet = model.resnet34(num_classes=dataset_train.num_classes(), pretrained=True)
         elif self.depth == 50:
-            retinanet = model.resnet50(num_classes=dataset_train.num_classes(), pretrained=True)
+            retinanet = model.resnet50(num_classes=dataset_train.num_classes(), pretrained=True, is_gray=self.is_gray)
         elif self.depth == 101:
             retinanet = model.resnet101(num_classes=dataset_train.num_classes(), pretrained=True)
         elif self.depth == 152:
@@ -263,7 +263,7 @@ class Trainer:
         print('GPU:{} is used'.format(self.device))
         dataset_train, dataset_test, dataset_val = self.set_dataset()
         sampler = AspectRatioBasedSampler(dataset_train, batch_size=self.bs, drop_last=False)
-        dataloader_train = DataLoader(dataset_train, num_workers=0, collate_fn=collater, batch_sampler=sampler)
+        dataloader_train = DataLoader(dataset_train, num_workers=0, collate_fn=collater(data=dataset_train, is_gray=self.is_gray), batch_sampler=sampler)
         
         print('Num training images: {}'.format(len(dataset_train)))
 

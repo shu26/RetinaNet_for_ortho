@@ -314,16 +314,19 @@ def resnet34(num_classes, pretrained=False, **kwargs):
     return model
 
 
-def resnet50(num_classes, pretrained=False, **kwargs):
+def resnet50(num_classes, pretrained=False, is_gray=False, **kwargs):
     """Constructs a ResNet-50 model.
     Args:
         pretrained (bool): If True, returns a model pre-trained on ImageNet
     """
     model = ResNet(num_classes, Bottleneck, [3, 4, 6, 3], **kwargs)
     if pretrained:
+        print(Trainer.is_gray)
+        print("==============::::========")
         model.load_state_dict(model_zoo.load_url(model_urls['resnet50'], model_dir='.'), strict=False)
         # Use below when you adjust the model for grayscale
-        #model.conv1 = nn.Conv2d(1, 64, kernel_size=7, stride=2, padding=3, bias=False)
+        if is_gray:
+            model.conv1 = nn.Conv2d(1, 64, kernel_size=7, stride=2, padding=3, bias=False)
     return model
 
 def resnet101(num_classes, pretrained=False, **kwargs):

@@ -59,7 +59,7 @@ def main(model_path, epoch_num):
             'prediction': True,
             'test': False,  # if you use the test dataset (splited with overlap), please set True
             }
-    device = torch.device('cuda:1' if torch.cuda.is_available() else 'cpu')
+    device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
     print(":::::::::::::::::")
     print("Now visualizing...")
@@ -76,10 +76,10 @@ def main(model_path, epoch_num):
         raise ValueError('Dataset type not understood (must be csv or coco), exiting.')
 
     sampler_val = AspectRatioBasedSampler(dataset_val, batch_size=1, drop_last=False)
-    dataloader_val = DataLoader(dataset_val, num_workers=1, collate_fn=collater, batch_sampler=sampler_val)
+    dataloader_val = DataLoader(dataset_val, num_workers=1, collate_fn=collater(data=dataset_val, is_gray=params['is_gray']), batch_sampler=sampler_val)
     nms = NMS(BBoxTransform, ClipBoxes)
     retinanet = resnet50(num_classes=params['num_class'], pretrained=True)
-    retinanet = retinanet.cpu()
+    #retinanet = retinanet.cpu()
     retinanet.load_state_dict(torch.load(params['model']), strict=False)
     retinanet.eval()
     retinanet = retinanet.to(device)

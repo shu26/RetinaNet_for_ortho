@@ -329,7 +329,7 @@ class CSVDataset(Dataset):
         return float(image.width) / float(image.height)
 
 
-def collater(data):
+def collater(data, is_gray=False):
 
     imgs = [s['img'] for s in data]
     annots = [s['annot'] for s in data]
@@ -345,10 +345,8 @@ def collater(data):
     max_width = np.array(widths).max()
     max_height = np.array(heights).max()
 
-    padded_imgs = torch.zeros(batch_size, max_width, max_height, 3)
-    
-    # Use below when you adjust the model for grayscale
-    #padded_imgs = torch.zeros(batch_size, max_width, max_height, 1)
+    padded_imgs_dim = 1 if is_gray else 3
+    padded_imgs = torch.zeros(batch_size, max_width, max_height, padded_imgs_dim)
 
     for i in range(batch_size):
         img = imgs[i]
@@ -370,16 +368,18 @@ def collater(data):
     padded_imgs = padded_imgs.permute(0, 3, 1, 2)
 
     return {'img': padded_imgs, 'annot': annot_padded, 'scale': scales, 
-            'p_idx': p_idxs, 'position': positions, 'div_num': div_nums}
+            'p_idx': p_idxs, 'position': positions, 'div_num': div_nums, 'is_gray': is_gray}
 
 class Grayscale(object):
     """Convert RGB images to Grayscale images."""
 
     def __call__(self, sample):
-        image = skimage.color.rgb2gray(sample['img'])
+        image = sample['img']
+        # adjust gammma correction
         imgL = skimage.exposure.adjust_gamma(image, 2.2)  # pow(img, 2.2)
-        img_grayL = rgb2gray(imgL)
-        image = exposure.adjust_gamma(img_grayL, 1.0/2.2)
+        # if you do not adjust gammma, you can do rgb2gray (below the code) only.
+        img_grayL = skimage.color.rgb2gray(imgL)
+        image = skimage.exposure.adjust_gamma(img_grayL, 1.0/2.2)
         image = image[:,:,np.newaxis]
         
         return {'img': image, 'annot': sample['annot']}
@@ -388,10 +388,11 @@ class Resizer(object):
     """Convert ndarrays in sample to Tensors."""
 
     def __call__(self, sample, min_side=600, max_side=1024):   # 604, 1024
-        image, annots = sample['img'], sample['annot']
+        image, annots, is_gray = sample['img'], sample['annot'], sample['is_gray']
         
-        #rows, cols = image.shape
-        rows, cols, cns = image.shape
+        
+        rows, cols = image.shape
+        rows, cols, cns = image.shape if is_gray
 
         smallest_side = min(rows, cols)
 
@@ -429,7 +430,7 @@ class Augmenter(object):
     def __call__(self, sample, flip_x=0.5):
 
         if np.random.rand() < flip_x:
-            image, annots = sample['img'], sample['annot']
+            image, annots, is_gray = sample['img'], sample['annot'], sample['is_gray']
             image = image[:, ::-1, :]
 
             rows, cols, channels = image.shape
@@ -442,7 +443,7 @@ class Augmenter(object):
             annots[:, 0] = cols - x2
             annots[:, 2] = cols - x_tmp
 
-            sample = {'img': image, 'annot': annots}
+            sample = {'img': image, 'annot': annots, 'is_gray': is_gray}
 
         return sample
 
@@ -453,14 +454,12 @@ class Normalizer(object):
         self.mean = np.array([[[0.485, 0.456, 0.406]]])
         self.std = np.array([[[0.229, 0.224, 0.225]]])
         
-        # Use below when you adjust the model for grayscale
-        #self.mean = np.array([[[0.485]]])
-        #self.std = np.array([[[0.229]]])
-
     def __call__(self, sample):
 
-        image, annots = sample['img'], sample['annot']
-        return {'img':((image.astype(np.float32)-self.mean)/self.std), 'annot': annots}
+        image, annots, is_gray = sample['img'], sample['annot'], sample['is_gray']
+        self.mean = np.array([[[0.485]]]) if is_gray
+        self.std = np.array([[[0.229]]]) if is_gray
+        return {'img':((image.astype(np.float32)-self.mean)/self.std), 'annot': annots, 'is_gray': is_gray}
 
 class UnNormalizer(object):
     def __init__(self, mean=None, std=None):
@@ -510,5 +509,3 @@ class AspectRatioBasedSampler(Sampler):
         order = list(range(len(self.data_source)))
         order.sort(key=lambda x: self.data_source.image_aspect_ratio(x))
 
-        # divide into groups, one group = one batch
-        return [[order[x % len(order)] for x in range(i, i + self.batch_size)] for i in range(0, len(order), self.batch_size)]
