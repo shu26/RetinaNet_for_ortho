@@ -362,7 +362,7 @@ class Trainer:
         elif self.dataset == 'csv' and self.csv_val is not None:
 
             print('Evaluating dataset csv')
-            recall, precision, mAP = csv_eval.evaluate(dataset_val, self.retinanet, self.nms, self.device)
+            recall, precision, mAP = csv_eval.evaluate(dataset_val, self.retinanet, self.nms, self.device, self.is_gray)
             metrics = {
                     'precision': precision,
                     'recall': recall,

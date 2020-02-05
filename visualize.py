@@ -35,7 +35,7 @@ def main(model_path, epoch_num):
 
             print('Evaluating dataset csv')
 
-            recall, precision, mAP = csv_eval.evaluate(dataset_val, retinanet, nms, device)
+            recall, precision, mAP = csv_eval.evaluate(dataset_val, retinanet, nms, device, params['is_gray'])
             metrics = {
                     'precision': precision,
                     'recall': recall,
@@ -58,6 +58,7 @@ def main(model_path, epoch_num):
             'num_class': 1,
             'prediction': True,
             'test': False,  # if you use the test dataset (splited with overlap), please set True
+            'is_gray': True,
             }
     device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
@@ -71,7 +72,9 @@ def main(model_path, epoch_num):
     if params['dataset'] == 'coco':
         dataset_val = CocoDataset(params['coco_path'], set_name='val2017', transform=transforms.Compose([Normalizer(), Resizer()]))
     elif params['dataset'] == 'csv':
-        dataset_val = CSVDataset(train_file=params['csv_val'], class_list=params['csv_classes'], transform=transforms.Compose([Normalizer(), Grayscale(), Resizer()]))
+        use_grayscale_dataset = CSVDataset(train_file=params['csv_val'], class_list=params['csv_classes'], transform=transforms.Compose([Normalizer(), Grayscale(), Resizer()]))
+        use_rgb_dataset = CSVDataset(train_file=params['csv_val'], class_list=params['csv_classes'], transform=transforms.Compose([Normalizer(), Grayscale(), Resizer()]))
+        dataset_val = use_grayscale_dataset if is_gray else use_rgb_dataset
     else:
         raise ValueError('Dataset type not understood (must be csv or coco), exiting.')
 
