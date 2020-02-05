@@ -156,6 +156,7 @@ def evaluate(
     retinanet,
     nms,
     device,
+    is_gray,
     iou_threshold=0.15,
     score_threshold=0.9,
     max_detections=8,
