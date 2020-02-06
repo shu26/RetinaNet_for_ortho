@@ -88,9 +88,7 @@ def _get_detections(dataset, retinanet, nms, device, score_threshold=0.9, max_de
             scale = data['scale']
 
             # run network
-            #input_for_gray = data['img'].permute(0, 1).to(device).float().unsqueeze(dim=0) 
             inputs = data['img'].permute(2, 0, 1).to(device).float().unsqueeze(dim=0)
-            #inputs = input_for_gray if is_gray else input_for_rgb
             regression, classification, anchors = retinanet(inputs)
             scores, labels, boxes = nms.calc_from_retinanet_output(inputs, regression, classification, anchors)
             scores = scores.cpu().numpy()
