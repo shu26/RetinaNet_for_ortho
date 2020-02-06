@@ -99,7 +99,7 @@ class BBoxTransform(nn.Module):
 
     def __init__(self, mean=None, std=None):
         super(BBoxTransform, self).__init__()
-        device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+        device = torch.device('cuda:1' if torch.cuda.is_available() else 'cpu')
         if mean is None:
             self.mean = torch.from_numpy(np.array([0, 0, 0, 0]).astype(np.float32)).to(device)
         else:

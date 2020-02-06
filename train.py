@@ -77,7 +77,7 @@ class Trainer:
         #self.save_freq = 5
 
         # set device
-        self.device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+        self.device = torch.device('cuda:1' if torch.cuda.is_available() else 'cpu')
 
         # set focal loss
         self.focal_loss = losses.FocalLoss()
@@ -263,12 +263,10 @@ class Trainer:
         print('GPU:{} is used'.format(self.device))
         dataset_train, dataset_test, dataset_val = self.set_dataset()
         sampler = AspectRatioBasedSampler(dataset_train, batch_size=self.bs, drop_last=False)
-        dataloader_train = DataLoader(dataset_train, num_workers=0, collate_fn=collater(data=dataset_train, is_gray=self.is_gray), batch_sampler=sampler)
+        dataloader_train = DataLoader(dataset_train, num_workers=0, collate_fn=collater, batch_sampler=sampler)
         
         print('Num training images: {}'.format(len(dataset_train)))
-
         self.set_models(dataset_train)
-
         for epoch_num in range(self.epochs):
             epoch_loss = []
 
@@ -282,6 +280,7 @@ class Trainer:
                 self.experiment.log_metrics(metrics, step=epoch_num)
             self.retinanet.train()
             self.retinanet.freeze_bn()
+            #FIXME
             epoch_loss = self.train(epoch_num, epoch_loss, dataloader_train)
             self.retinanet.eval()
 
@@ -293,7 +292,7 @@ class Trainer:
 
             if (epoch_num+1) % 100 == 0:# or epoch_num == 10:
                 #self.evaluate(epoch_num, dataset_val)
-                model_path = os.path.join('./saved_models/split_dataset/makiya/', 'tree_model2_{}epochs.pth'.format(epoch_num))
+                model_path = os.path.join('./saved_models/split_dataset/makiya/', 'tree_gray_model3_{}epochs.pth'.format(epoch_num))
                 torch.save(self.retinanet.state_dict(), model_path)
                 #visualize(model_path, epoch_num)
 
@@ -303,6 +302,8 @@ class Trainer:
 
 
     def train(self, epoch_num, epoch_loss, dataloader_train):
+
+        #FIXME
         for iter_num, data in enumerate(dataloader_train):
             try:
 

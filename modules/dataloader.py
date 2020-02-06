@@ -22,6 +22,7 @@ from PIL import Image
 from sklearn.model_selection import train_test_split
 import pandas as pd
 
+
 class CocoDataset(Dataset):
     """Coco dataset."""
 
@@ -154,7 +155,6 @@ class CSVDataset(Dataset):
         try:
             with self._open_for_csv(self.train_file) as file:
                 self.image_data = self._read_annotations(csv.reader(file, delimiter=','), self.classes)
-                #print("self.image_data", self.image_data)
         except ValueError as e:
             raise_from(ValueError('invalid CSV annotations file: {}: {}'.format(self.train_file, e)), None)
         self.image_names = list(self.image_data.keys())
@@ -231,8 +231,6 @@ class CSVDataset(Dataset):
         return index, pos, div_num
 
     def load_image(self, image_index):
-        #print(image_index)
-        #print(self.image_names)
         file_path = self.image_names[image_index]
         img = skimage.io.imread(file_path)
         
@@ -329,15 +327,14 @@ class CSVDataset(Dataset):
         return float(image.width) / float(image.height)
 
 
-def collater(data, is_gray=False):
-
+def collater(data):
     imgs = [s['img'] for s in data]
     annots = [s['annot'] for s in data]
     scales = [s['scale'] for s in data]
     p_idxs = [s['p_idx'] for s in data]
     positions = [s['position'] for s in data]
     div_nums = [s['div_num'] for s in data]
-        
+
     widths = [int(s.shape[0]) for s in imgs]
     heights = [int(s.shape[1]) for s in imgs]
     batch_size = len(imgs)
@@ -345,7 +342,7 @@ def collater(data, is_gray=False):
     max_width = np.array(widths).max()
     max_height = np.array(heights).max()
 
-    padded_imgs_dim = 1 if is_gray else 3
+    padded_imgs_dim = 1 #if is_gray else 3
     padded_imgs = torch.zeros(batch_size, max_width, max_height, padded_imgs_dim)
 
     for i in range(batch_size):
@@ -368,31 +365,24 @@ def collater(data, is_gray=False):
     padded_imgs = padded_imgs.permute(0, 3, 1, 2)
 
     return {'img': padded_imgs, 'annot': annot_padded, 'scale': scales, 
-            'p_idx': p_idxs, 'position': positions, 'div_num': div_nums, 'is_gray': is_gray}
+            'p_idx': p_idxs, 'position': positions, 'div_num': div_nums}
 
 class Grayscale(object):
     """Convert RGB images to Grayscale images."""
 
     def __call__(self, sample):
-        image = sample['img']
-        # adjust gammma correction
-        imgL = skimage.exposure.adjust_gamma(image, 2.2)  # pow(img, 2.2)
-        # if you do not adjust gammma, you can do rgb2gray (below the code) only.
-        img_grayL = skimage.color.rgb2gray(imgL)
-        image = skimage.exposure.adjust_gamma(img_grayL, 1.0/2.2)
+        image = skimage.color.rgb2gray(sample['img'])
         image = image[:,:,np.newaxis]
-        
         return {'img': image, 'annot': sample['annot']}
+
 
 class Resizer(object):
     """Convert ndarrays in sample to Tensors."""
 
     def __call__(self, sample, min_side=600, max_side=1024):   # 604, 1024
-        image, annots, is_gray = sample['img'], sample['annot'], sample['is_gray']
+        image, annots = sample['img'], sample['annot']
         
-        
-        rows, cols = image.shape
-        rows, cols, cns = image.shape if is_gray
+        rows, cols, cns = image.shape 
 
         smallest_side = min(rows, cols)
 
@@ -430,7 +420,7 @@ class Augmenter(object):
     def __call__(self, sample, flip_x=0.5):
 
         if np.random.rand() < flip_x:
-            image, annots, is_gray = sample['img'], sample['annot'], sample['is_gray']
+            image, annots = sample['img'], sample['annot']
             image = image[:, ::-1, :]
 
             rows, cols, channels = image.shape
@@ -443,7 +433,7 @@ class Augmenter(object):
             annots[:, 0] = cols - x2
             annots[:, 2] = cols - x_tmp
 
-            sample = {'img': image, 'annot': annots, 'is_gray': is_gray}
+            sample = {'img': image, 'annot': annots}
 
         return sample
 
@@ -451,15 +441,16 @@ class Augmenter(object):
 class Normalizer(object):
 
     def __init__(self):
-        self.mean = np.array([[[0.485, 0.456, 0.406]]])
-        self.std = np.array([[[0.229, 0.224, 0.225]]])
+        #self.mean = np.array([[[0.485, 0.456, 0.406]]])
+        #self.std = np.array([[[0.229, 0.224, 0.225]]])
+        self.mean = np.array([[[0.485]]]) 
+        self.std = np.array([[[0.229]]]) 
         
     def __call__(self, sample):
-
-        image, annots, is_gray = sample['img'], sample['annot'], sample['is_gray']
-        self.mean = np.array([[[0.485]]]) if is_gray
-        self.std = np.array([[[0.229]]]) if is_gray
-        return {'img':((image.astype(np.float32)-self.mean)/self.std), 'annot': annots, 'is_gray': is_gray}
+        image, annots = sample['img'], sample['annot']
+        #self.mean = np.array([[[0.485]]]) if is_gray else self.mean
+        #self.std = np.array([[[0.229]]]) if is_gray else self.std
+        return {'img':((image.astype(np.float32)-self.mean)/self.std), 'annot': annots}
 
 class UnNormalizer(object):
     def __init__(self, mean=None, std=None):
@@ -479,7 +470,6 @@ class UnNormalizer(object):
         Returns:
             Tensor: Normalized image.
         """
-        #print("111111111")
         for t, m, s in zip(tensor, self.mean, self.std):
             t.mul_(s).add_(m)
         return tensor
@@ -508,4 +498,8 @@ class AspectRatioBasedSampler(Sampler):
         # determine the order of the images
         order = list(range(len(self.data_source)))
         order.sort(key=lambda x: self.data_source.image_aspect_ratio(x))
+
+        # divide into groups, one group = one batch
+        return [[order[x % len(order)] for x in range(i, i + self.batch_size)] for i in range(0, len(order), self.batch_size)]
+
 
