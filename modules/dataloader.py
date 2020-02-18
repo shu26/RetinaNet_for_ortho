@@ -343,7 +343,7 @@ def collater(data):
     max_height = np.array(heights).max()
 
     #TODO: Change padded_imgs_dim for grayscale
-    padded_imgs_dim = 1 #if is_gray else 3
+    padded_imgs_dim = 3 #if is_gray else 3
     padded_imgs = torch.zeros(batch_size, max_width, max_height, padded_imgs_dim)
 
     for i in range(batch_size):
@@ -448,8 +448,8 @@ class Normalizer(object):
     def __call__(self, sample):
         image, annots = sample['img'], sample['annot']
         #TODO: Change self.mean & self.std for grayscale
-        self.mean = np.array([[[0.485]]]) #if is_gray else self.mean
-        self.std = np.array([[[0.229]]]) #if is_gray else self.std
+        #self.mean = np.array([[[0.485]]]) #if is_gray else self.mean
+        #self.std = np.array([[[0.229]]]) #if is_gray else self.std
         return {'img':((image.astype(np.float32)-self.mean)/self.std), 'annot': annots}
 
 class UnNormalizer(object):

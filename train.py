@@ -44,19 +44,19 @@ class Trainer:
         self.coco_path = './data'
 
         # Path to file containing training annotations (see readme)
-        self.csv_train ='./csv_data/split_dataset/makiya/annotations/tree_annotation.csv'
+        self.csv_train ='./csv_data/split_dataset/makiya/annotations/9_1_tree/train0_annotation.csv'
 
         # Path to file containing class list (see readme)
         self.csv_classes = './csv_data/split_dataset/makiya/annotations/tree_class_id.csv'
 
         # Path to file containing validation annotations (optional, see readme)
-        self.csv_val = './csv_data/split_dataset/makiya/annotations/tree_annotation.csv'
+        self.csv_val = './csv_data/split_dataset/makiya/annotations/9_1_tree/test0_annotation.csv'
 
-        self.splited_train_path = './csv_data/split_dataset/makiya/annotations/9_1_pet_tree_rope/train0_annotation.csv'
-        self.splited_test_path = './csv_data/split_dataset/makiya/annotations/9_1_pet_tree_rope/test0_annotation.csv'
+        self.splited_train_path = './csv_data/split_dataset/makiya/annotations/9_1_tree/train4_annotation.csv'
+        self.splited_test_path = './csv_data/split_dataset/makiya/annotations/9_1_tree/test4_annotation.csv'
 
         # If you use grayscale image, this valuable is true
-        self.is_gray = True
+        self.is_gray = False 
         
         # Resnet depth, must be one of 18, 34, 50, 101, 152
         self.depth = 50
@@ -292,7 +292,7 @@ class Trainer:
 
             if (epoch_num+1) % 100 == 0:# or epoch_num == 10:
                 #self.evaluate(epoch_num, dataset_val)
-                model_path = os.path.join('./saved_models/split_dataset/makiya/', 'tree_gray_model3_{}epochs.pth'.format(epoch_num))
+                model_path = os.path.join('./saved_models/split_dataset/makiya/9_1_tree', 'tree_model0_{}epochs.pth'.format(epoch_num))
                 torch.save(self.retinanet.state_dict(), model_path)
                 #visualize(model_path, epoch_num)
 

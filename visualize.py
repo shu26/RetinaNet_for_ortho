@@ -53,14 +53,14 @@ def main(model_path, epoch_num):
             'dataset': 'csv',
             'coco_path': '',
             'csv_classes': './csv_data/split_dataset/makiya/annotations/tree_class_id.csv',
-            'csv_val': './csv_data/split_dataset/komesu/annotations/tree_annotation.csv',
+            'csv_val': './csv_data/split_dataset/makiya/annotations/9_1_tree/test0_annotation.csv',
             'model': model_path,
             'num_class': 1,
             'prediction': True,
             'test': False,  # if you use the test dataset (splited with overlap), please set True
-            'is_gray': True,
+            'is_gray': False,
             }
-    device = torch.device('cuda:1' if torch.cuda.is_available() else 'cpu')
+    device = torch.device('cuda:3' if torch.cuda.is_available() else 'cpu')
 
     print(":::::::::::::::::")
     print("Now visualizing...")
@@ -73,7 +73,7 @@ def main(model_path, epoch_num):
         dataset_val = CocoDataset(params['coco_path'], set_name='val2017', transform=transforms.Compose([Normalizer(), Resizer()]))
     elif params['dataset'] == 'csv':
         use_grayscale_dataset = CSVDataset(train_file=params['csv_val'], class_list=params['csv_classes'], transform=transforms.Compose([Normalizer(), Grayscale(), Resizer()]))
-        use_rgb_dataset = CSVDataset(train_file=params['csv_val'], class_list=params['csv_classes'], transform=transforms.Compose([Normalizer(), Grayscale(), Resizer()]))
+        use_rgb_dataset = CSVDataset(train_file=params['csv_val'], class_list=params['csv_classes'], transform=transforms.Compose([Normalizer(), Resizer()]))
         dataset_val = use_grayscale_dataset if params['is_gray'] else use_rgb_dataset
     else:
         raise ValueError('Dataset type not understood (must be csv or coco), exiting.')
@@ -81,7 +81,7 @@ def main(model_path, epoch_num):
     sampler_val = AspectRatioBasedSampler(dataset_val, batch_size=1, drop_last=False)
     dataloader_val = DataLoader(dataset_val, num_workers=1, collate_fn=collater, batch_sampler=sampler_val)
     nms = NMS(BBoxTransform, ClipBoxes)
-    retinanet = resnet50(num_classes=params['num_class'], pretrained=True, is_gray=True)
+    retinanet = resnet50(num_classes=params['num_class'], pretrained=True, is_gray=params['is_gray'])
     #retinanet = retinanet.cpu()
     retinanet.load_state_dict(torch.load(params['model']), strict=False)
     retinanet.eval()
@@ -284,4 +284,4 @@ def main(model_path, epoch_num):
             return dataset_val
 
 if __name__ == '__main__':
-    main("./saved_models/split_dataset/makiya/tree_gray_model2_199epochs.pth", 200)
+    main("./saved_models/split_dataset/makiya/9_1_tree/tree_model0_199epochs.pth", 200)

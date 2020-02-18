@@ -323,7 +323,7 @@ def resnet50(num_classes, pretrained=False, is_gray=False, **kwargs):
     if pretrained:
         model.load_state_dict(model_zoo.load_url(model_urls['resnet50'], model_dir='.'), strict=False)
         # Use below when you adjust the model for grayscale
-        model.conv1 = nn.Conv2d(1, 64, kernel_size=7, stride=2, padding=3, bias=False) if is_gray else model.conv1
+        #model.conv1 = nn.Conv2d(1, 64, kernel_size=7, stride=2, padding=3, bias=False) if is_gray else model.conv1
     print("selected resnet50")
     return model
 
